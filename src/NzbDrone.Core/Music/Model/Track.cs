@@ -30,6 +30,7 @@ namespace NzbDrone.Core.Music
         public Ratings Ratings { get; set; }
         public int MediumNumber { get; set; }
         public int TrackFileId { get; set; }
+        public bool Monitored { get; set; }
 
         [MemberwiseEqualityIgnore]
         public bool HasFile => TrackFileId > 0;
@@ -81,6 +82,7 @@ namespace NzbDrone.Core.Music
             AlbumReleaseId = other.AlbumReleaseId;
             ArtistMetadataId = other.ArtistMetadataId;
             TrackFileId = other.TrackFileId;
+            Monitored = other.Monitored;
         }
     }
 }
