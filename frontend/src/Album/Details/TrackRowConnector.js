@@ -1,5 +1,7 @@
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
+import * as commandNames from 'Commands/commandNames';
+import { executeCommand } from 'Store/Actions/commandActions';
 import { toggleTrackMonitored } from 'Store/Actions/trackActions';
 import { deleteTrackFile } from 'Store/Actions/trackFileActions';
 import createTrackFileSelector from 'Store/Selectors/createTrackFileSelector';
@@ -23,7 +25,8 @@ function createMapStateToProps() {
 
 const mapDispatchToProps = {
   deleteTrackFile,
-  onMonitoredPress: (id, monitored) => toggleTrackMonitored({ trackId: id, monitored })
+  onMonitoredPress: (id, monitored) => toggleTrackMonitored({ trackId: id, monitored }),
+  onSearchTrackPress: (id) => executeCommand({ name: commandNames.TRACK_SEARCH, trackIds: [id] })
 };
 
 export default connect(createMapStateToProps, mapDispatchToProps)(TrackRow);

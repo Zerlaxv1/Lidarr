@@ -46,6 +46,10 @@ class TrackActionsCell extends Component {
     this.setState({ isConfirmDeleteModalOpen: false });
   };
 
+  onSearchPress = () => {
+    this.props.onSearchTrackPress(this.props.id);
+  };
+
   //
   // Render
 
@@ -63,6 +67,11 @@ class TrackActionsCell extends Component {
 
     return (
       <TableRowCell className={styles.TrackActionsCell}>
+        <IconButton
+          name={icons.SEARCH}
+          title={translate('AutomaticSearch')}
+          onPress={this.onSearchPress}
+        />
         {
           trackFilePath &&
             <IconButton
@@ -104,7 +113,8 @@ TrackActionsCell.propTypes = {
   albumId: PropTypes.number.isRequired,
   trackFilePath: PropTypes.string,
   trackFileId: PropTypes.number.isRequired,
-  deleteTrackFile: PropTypes.func.isRequired
+  deleteTrackFile: PropTypes.func.isRequired,
+  onSearchTrackPress: PropTypes.func.isRequired
 };
 
 export default TrackActionsCell;

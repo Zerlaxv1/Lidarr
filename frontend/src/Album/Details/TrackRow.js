@@ -47,7 +47,8 @@ class TrackRow extends Component {
       customFormatScore,
       indexerFlags,
       columns,
-      deleteTrackFile
+      deleteTrackFile,
+      onSearchTrackPress
     } = this.props;
 
     return (
@@ -228,6 +229,7 @@ class TrackRow extends Component {
                   trackFilePath={trackFilePath}
                   trackFileId={trackFileId}
                   deleteTrackFile={deleteTrackFile}
+                  onSearchTrackPress={onSearchTrackPress}
                 />
               );
             }
@@ -259,7 +261,8 @@ TrackRow.propTypes = {
   customFormatScore: PropTypes.number.isRequired,
   indexerFlags: PropTypes.number.isRequired,
   mediaInfo: PropTypes.object,
-  columns: PropTypes.arrayOf(PropTypes.object).isRequired
+  columns: PropTypes.arrayOf(PropTypes.object).isRequired,
+  onSearchTrackPress: PropTypes.func.isRequired
 };
 
 TrackRow.defaultProps = {
