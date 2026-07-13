@@ -3,7 +3,9 @@ import { createAction } from 'redux-actions';
 import Icon from 'Components/Icon';
 import { icons, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import translate from 'Utilities/String/translate';
+import { updateItem } from './baseActions';
 import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
@@ -28,6 +30,12 @@ export const defaultState = {
   items: [],
 
   columns: [
+    {
+      name: 'monitored',
+      columnLabel: () => translate('Monitored'),
+      isVisible: true,
+      isModifiable: false
+    },
     {
       name: 'medium',
       label: () => translate('Medium'),
@@ -113,6 +121,7 @@ export const FETCH_TRACKS = 'tracks/fetchTracks';
 export const SET_TRACKS_SORT = 'tracks/setTracksSort';
 export const SET_TRACKS_TABLE_OPTION = 'tracks/setTracksTableOption';
 export const CLEAR_TRACKS = 'tracks/clearTracks';
+export const TOGGLE_TRACK_MONITORED = 'tracks/toggleTrackMonitored';
 
 //
 // Action Creators
@@ -121,12 +130,34 @@ export const fetchTracks = createThunk(FETCH_TRACKS);
 export const setTracksSort = createAction(SET_TRACKS_SORT);
 export const setTracksTableOption = createAction(SET_TRACKS_TABLE_OPTION);
 export const clearTracks = createAction(CLEAR_TRACKS);
+export const toggleTrackMonitored = createThunk(TOGGLE_TRACK_MONITORED);
 
 //
 // Action Handlers
 
 export const actionHandlers = handleThunks({
-  [FETCH_TRACKS]: createFetchHandler(section, '/track')
+  [FETCH_TRACKS]: createFetchHandler(section, '/track'),
+
+  [TOGGLE_TRACK_MONITORED]: function(getState, payload, dispatch) {
+    const { trackId, monitored } = payload;
+
+    dispatch(updateItem({ id: trackId, section, isSaving: true }));
+
+    const promise = createAjaxRequest({
+      url: '/track/monitor',
+      method: 'PUT',
+      data: JSON.stringify({ trackIds: [trackId], monitored }),
+      dataType: 'json'
+    }).request;
+
+    promise.done(() => {
+      dispatch(updateItem({ id: trackId, section, isSaving: false, monitored }));
+    });
+
+    promise.fail(() => {
+      dispatch(updateItem({ id: trackId, section, isSaving: false }));
+    });
+  }
 
 });
 

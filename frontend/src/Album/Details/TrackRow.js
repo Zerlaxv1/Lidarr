@@ -4,6 +4,7 @@ import AlbumFormats from 'Album/AlbumFormats';
 import EpisodeStatusConnector from 'Album/EpisodeStatusConnector';
 import IndexerFlags from 'Album/IndexerFlags';
 import Icon from 'Components/Icon';
+import MonitorToggleButton from 'Components/MonitorToggleButton';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRow from 'Components/Table/TableRow';
 import Popover from 'Components/Tooltip/Popover';
@@ -19,6 +20,14 @@ import TrackActionsCell from './TrackActionsCell';
 import styles from './TrackRow.css';
 
 class TrackRow extends Component {
+
+  //
+  // Listeners
+
+  onMonitoredPress = () => {
+    const { id, monitored, onMonitoredPress } = this.props;
+    onMonitoredPress(id, !monitored);
+  };
 
   //
   // Render
@@ -52,6 +61,21 @@ class TrackRow extends Component {
 
             if (!isVisible) {
               return null;
+            }
+
+            if (name === 'monitored') {
+              return (
+                <TableRowCell
+                  key={name}
+                  className={styles.monitored}
+                >
+                  <MonitorToggleButton
+                    monitored={this.props.monitored}
+                    isSaving={this.props.isSaving}
+                    onPress={this.onMonitoredPress}
+                  />
+                </TableRowCell>
+              );
             }
 
             if (name === 'medium') {
@@ -220,6 +244,8 @@ TrackRow.propTypes = {
   deleteTrackFile: PropTypes.func.isRequired,
   id: PropTypes.number.isRequired,
   albumId: PropTypes.number.isRequired,
+  monitored: PropTypes.bool.isRequired,
+  onMonitoredPress: PropTypes.func.isRequired,
   trackFileId: PropTypes.number,
   mediumNumber: PropTypes.number.isRequired,
   trackNumber: PropTypes.string.isRequired,
