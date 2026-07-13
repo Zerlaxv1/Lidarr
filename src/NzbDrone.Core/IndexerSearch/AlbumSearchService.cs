@@ -13,7 +13,8 @@ using NzbDrone.Core.Queue;
 
 namespace NzbDrone.Core.IndexerSearch
 {
-    internal class AlbumSearchService : IExecute<AlbumSearchCommand>,
+    public class AlbumSearchService : IExecute<AlbumSearchCommand>,
+                               IExecute<TrackSearchCommand>,
                                IExecute<MissingAlbumSearchCommand>,
                                IExecute<CutoffUnmetAlbumSearchCommand>
     {
@@ -74,6 +75,23 @@ namespace NzbDrone.Core.IndexerSearch
                 var processed = _processDownloadDecisions.ProcessDecisions(decisions).GetAwaiter().GetResult();
 
                 _logger.ProgressInfo("Album search completed. {0} reports downloaded.", processed.Grabbed.Count);
+            }
+        }
+
+        public void Execute(TrackSearchCommand message)
+        {
+            // Search is album-oriented; resolve each track's album and search it once.
+            // Import filtering keeps only the monitored tracks.
+            var albumIds = message.TrackIds
+                .Select(id => _albumService.FindAlbumByTrackId(id).Id)
+                .Distinct();
+
+            foreach (var albumId in albumIds)
+            {
+                var decisions = _releaseSearchService.AlbumSearch(albumId, false, message.Trigger == CommandTrigger.Manual, false).GetAwaiter().GetResult();
+                var processed = _processDownloadDecisions.ProcessDecisions(decisions).GetAwaiter().GetResult();
+
+                _logger.ProgressInfo("Track search completed. {0} reports downloaded.", processed.Grabbed.Count);
             }
         }
 
