@@ -25,6 +25,7 @@ namespace NzbDrone.Core.Music
         void UpdateMany(List<Track> tracks);
         void DeleteMany(List<Track> tracks);
         void SetFileIds(List<Track> tracks);
+        void SetMonitored(IEnumerable<int> ids, bool monitored);
     }
 
     public class TrackService : ITrackService,
@@ -120,6 +121,11 @@ namespace NzbDrone.Core.Music
         public void SetFileIds(List<Track> tracks)
         {
             _trackRepository.SetFileId(tracks);
+        }
+
+        public void SetMonitored(IEnumerable<int> ids, bool monitored)
+        {
+            _trackRepository.SetMonitored(ids, monitored);
         }
 
         public void Handle(ReleaseDeletedEvent message)

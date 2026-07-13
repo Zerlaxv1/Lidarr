@@ -19,6 +19,7 @@ namespace NzbDrone.Core.Music
         List<Track> TracksWithoutFiles(int albumId);
         void SetFileId(List<Track> tracks);
         void DetachTrackFile(int trackFileId);
+        void SetMonitored(IEnumerable<int> ids, bool monitored);
     }
 
     public class TrackRepository : BasicRepository<Track>, ITrackRepository
@@ -26,6 +27,12 @@ namespace NzbDrone.Core.Music
         public TrackRepository(IMainDatabase database, IEventAggregator eventAggregator)
             : base(database, eventAggregator)
         {
+        }
+
+        public void SetMonitored(IEnumerable<int> ids, bool monitored)
+        {
+            var tracks = ids.Select(x => new Track { Id = x, Monitored = monitored }).ToList();
+            SetFields(tracks, t => t.Monitored);
         }
 
         public List<Track> GetTracks(int artistId)
