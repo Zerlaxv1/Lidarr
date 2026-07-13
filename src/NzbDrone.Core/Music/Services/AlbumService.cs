@@ -49,16 +49,19 @@ namespace NzbDrone.Core.Music
         private readonly IAlbumRepository _albumRepository;
         private readonly IEventAggregator _eventAggregator;
         private readonly IMediaFileService _mediaFileService;
+        private readonly ITrackService _trackService;
         private readonly Logger _logger;
 
         public AlbumService(IAlbumRepository albumRepository,
                             IEventAggregator eventAggregator,
                             IMediaFileService mediaFileService,
+                            ITrackService trackService,
                             Logger logger)
         {
             _albumRepository = albumRepository;
             _eventAggregator = eventAggregator;
             _mediaFileService = mediaFileService;
+            _trackService = trackService;
             _logger = logger;
         }
 
@@ -284,6 +287,7 @@ namespace NzbDrone.Core.Music
         {
             var album = _albumRepository.Get(albumId);
             _albumRepository.SetMonitoredFlat(album, monitored);
+            SetTracksMonitored(albumId, monitored);
 
             // publish album edited event so artist stats update
             _eventAggregator.PublishEvent(new AlbumEditedEvent(album, album));
@@ -295,10 +299,26 @@ namespace NzbDrone.Core.Music
         {
             _albumRepository.SetMonitored(ids, monitored);
 
+            // cascade the monitored flag down to each album's tracks (Sonarr season -> episode)
+            foreach (var albumId in ids)
+            {
+                SetTracksMonitored(albumId, monitored);
+            }
+
             // publish album edited event so artist stats update
             foreach (var album in _albumRepository.Get(ids))
             {
                 _eventAggregator.PublishEvent(new AlbumEditedEvent(album, album));
+            }
+        }
+
+        private void SetTracksMonitored(int albumId, bool monitored)
+        {
+            var trackIds = _trackService.GetTracksByAlbum(albumId).Select(t => t.Id).ToList();
+
+            if (trackIds.Any())
+            {
+                _trackService.SetMonitored(trackIds, monitored);
             }
         }
 
