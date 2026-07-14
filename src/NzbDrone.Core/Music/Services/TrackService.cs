@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Music.Events;
@@ -18,6 +19,7 @@ namespace NzbDrone.Core.Music
         List<Track> GetTracksForRefresh(int albumReleaseId, List<string> foreignTrackIds);
         List<Track> TracksWithFiles(int artistId);
         List<Track> TracksWithoutFiles(int albumId);
+        PagingSpec<Track> TracksWithoutFilesPaged(PagingSpec<Track> pagingSpec, bool monitored);
         List<Track> GetTracksByFileId(int trackFileId);
         List<Track> GetTracksByFileId(IEnumerable<int> trackFileIds);
         void UpdateTrack(Track track);
@@ -86,6 +88,11 @@ namespace NzbDrone.Core.Music
         public List<Track> TracksWithoutFiles(int albumId)
         {
             return _trackRepository.TracksWithoutFiles(albumId);
+        }
+
+        public PagingSpec<Track> TracksWithoutFilesPaged(PagingSpec<Track> pagingSpec, bool monitored)
+        {
+            return _trackRepository.TracksWithoutFilesPaged(pagingSpec, monitored);
         }
 
         public List<Track> GetTracksByFileId(int trackFileId)

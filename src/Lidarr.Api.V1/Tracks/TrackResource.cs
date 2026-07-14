@@ -27,6 +27,7 @@ namespace Lidarr.Api.V1.Tracks
         public bool Monitored { get; set; }
 
         public ArtistResource Artist { get; set; }
+        public Lidarr.Api.V1.Albums.AlbumResource Album { get; set; }
         public Ratings Ratings { get; set; }
 
         // Hiding this so people don't think its usable (only used to set the initial state)

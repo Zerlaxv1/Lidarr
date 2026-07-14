@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Core.Datastore;
@@ -17,6 +18,7 @@ namespace NzbDrone.Core.Music
         List<Track> GetTracksByFileId(IEnumerable<int> ids);
         List<Track> TracksWithFiles(int artistId);
         List<Track> TracksWithoutFiles(int albumId);
+        PagingSpec<Track> TracksWithoutFilesPaged(PagingSpec<Track> pagingSpec, bool monitored);
         void SetFileId(List<Track> tracks);
         void DetachTrackFile(int trackFileId);
         void SetMonitored(IEnumerable<int> ids, bool monitored);
@@ -108,6 +110,54 @@ namespace NzbDrone.Core.Music
                          .Where<TrackFile>(x => x.Id == null));
 #pragma warning restore CS0472
         }
+
+        // x.Id == null is converted to SQL, so warning incorrect
+#pragma warning disable CS0472
+        private SqlBuilder TracksWithoutFilesPagedBuilder(DateTime currentTime, bool monitored)
+        {
+            var builder = Builder()
+                .Join<Track, AlbumRelease>((t, r) => t.AlbumReleaseId == r.Id)
+                .Join<AlbumRelease, Album>((r, a) => r.AlbumId == a.Id)
+                .Join<Album, Artist>((album, artist) => album.ArtistMetadataId == artist.ArtistMetadataId)
+                .LeftJoin<Track, TrackFile>((t, f) => t.TrackFileId == f.Id)
+                .Where<TrackFile>(f => f.Id == null)
+                .Where<AlbumRelease>(r => r.Monitored == true)
+                .Where<Album>(a => a.ReleaseDate <= currentTime);
+
+            if (monitored)
+            {
+                builder = builder.Where<Track>(t => t.Monitored == true)
+                    .Where<Album>(a => a.Monitored == true)
+                    .Where<Artist>(a => a.Monitored == true);
+            }
+            else
+            {
+                var falseIndicator = _database.DatabaseType == DatabaseType.PostgreSQL ? "false" : "0";
+                builder = builder.Where($"(\"Tracks\".\"Monitored\" = {falseIndicator} OR \"Albums\".\"Monitored\" = {falseIndicator} OR \"Artists\".\"Monitored\" = {falseIndicator})");
+            }
+
+            return builder;
+        }
+#pragma warning restore CS0472
+
+        public PagingSpec<Track> TracksWithoutFilesPaged(PagingSpec<Track> pagingSpec, bool monitored)
+        {
+            var currentTime = DateTime.UtcNow;
+
+            pagingSpec.Records = GetPagedRecords(TracksWithoutFilesPagedBuilder(currentTime, monitored), pagingSpec, PagedJoinedQuery);
+            pagingSpec.TotalRecords = GetPagedRecordCount(TracksWithoutFilesPagedBuilder(currentTime, monitored).SelectCount(), pagingSpec);
+
+            return pagingSpec;
+        }
+
+        private IEnumerable<Track> PagedJoinedQuery(SqlBuilder builder) =>
+            _database.QueryJoined<Track, AlbumRelease, Album, Artist>(builder, (track, release, album, artist) =>
+            {
+                track.AlbumRelease = release;
+                track.Album = album;
+                track.Artist = artist;
+                return track;
+            });
 
         public void SetFileId(List<Track> tracks)
         {
