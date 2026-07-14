@@ -20,6 +20,7 @@ namespace NzbDrone.Core.IndexerSearch
     {
         private readonly ISearchForReleases _releaseSearchService;
         private readonly IAlbumService _albumService;
+        private readonly ITrackService _trackService;
         private readonly IAlbumCutoffService _albumCutoffService;
         private readonly IQueueService _queueService;
         private readonly IProcessDownloadDecisions _processDownloadDecisions;
@@ -27,6 +28,7 @@ namespace NzbDrone.Core.IndexerSearch
 
         public AlbumSearchService(ISearchForReleases nzbSearchService,
             IAlbumService albumService,
+            ITrackService trackService,
             IAlbumCutoffService albumCutoffService,
             IQueueService queueService,
             IProcessDownloadDecisions processDownloadDecisions,
@@ -34,6 +36,7 @@ namespace NzbDrone.Core.IndexerSearch
         {
             _releaseSearchService = nzbSearchService;
             _albumService = albumService;
+            _trackService = trackService;
             _albumCutoffService = albumCutoffService;
             _queueService = queueService;
             _processDownloadDecisions = processDownloadDecisions;
@@ -67,6 +70,50 @@ namespace NzbDrone.Core.IndexerSearch
             _logger.ProgressInfo("Completed search for {0} albums. {1} reports downloaded.", albums.Count, downloadedCount);
         }
 
+        private async Task SearchForMissingAlbums(List<Album> albums, bool userInvokedSearch)
+        {
+            _logger.ProgressInfo("Performing missing search for {0} albums", albums.Count);
+            var downloadedCount = 0;
+
+            foreach (var album in albums.OrderBy(a => a.LastSearchTime ?? DateTime.MinValue))
+            {
+                List<DownloadDecision> decisions;
+
+                try
+                {
+                    var tracks = _trackService.GetTracksByAlbum(album.Id);
+
+                    if (tracks.Any(t => !t.Monitored))
+                    {
+                        // ponytail: partially monitored album -> one search per monitored
+                        // fileless track. Fine for song-mode usage (few tracks per album);
+                        // batch into a single multi-track search if it ever gets slow.
+                        decisions = new List<DownloadDecision>();
+
+                        foreach (var track in tracks.Where(t => t.Monitored && !t.HasFile))
+                        {
+                            decisions.AddRange(await _releaseSearchService.TrackSearch(track.Id, userInvokedSearch, false));
+                        }
+                    }
+                    else
+                    {
+                        decisions = await _releaseSearchService.AlbumSearch(album.Id, false, userInvokedSearch, false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Unable to search for album: [{0}]", album);
+                    continue;
+                }
+
+                var processed = await _processDownloadDecisions.ProcessDecisions(decisions);
+
+                downloadedCount += processed.Grabbed.Count;
+            }
+
+            _logger.ProgressInfo("Completed search for {0} albums. {1} reports downloaded.", albums.Count, downloadedCount);
+        }
+
         public void Execute(AlbumSearchCommand message)
         {
             foreach (var albumId in message.AlbumIds)
@@ -80,19 +127,17 @@ namespace NzbDrone.Core.IndexerSearch
 
         public void Execute(TrackSearchCommand message)
         {
-            // Search is album-oriented; resolve each track's album and search it once.
-            // Import filtering keeps only the monitored tracks.
-            var albumIds = message.TrackIds
-                .Select(id => _albumService.FindAlbumByTrackId(id).Id)
-                .Distinct();
+            var downloadedCount = 0;
 
-            foreach (var albumId in albumIds)
+            foreach (var trackId in message.TrackIds)
             {
-                var decisions = _releaseSearchService.AlbumSearch(albumId, false, message.Trigger == CommandTrigger.Manual, false).GetAwaiter().GetResult();
+                var decisions = _releaseSearchService.TrackSearch(trackId, message.Trigger == CommandTrigger.Manual, false).GetAwaiter().GetResult();
                 var processed = _processDownloadDecisions.ProcessDecisions(decisions).GetAwaiter().GetResult();
 
-                _logger.ProgressInfo("Track search completed. {0} reports downloaded.", processed.Grabbed.Count);
+                downloadedCount += processed.Grabbed.Count;
             }
+
+            _logger.ProgressInfo("Track search completed. {0} reports downloaded.", downloadedCount);
         }
 
         public void Execute(MissingAlbumSearchCommand message)
@@ -133,7 +178,7 @@ namespace NzbDrone.Core.IndexerSearch
             var queue = _queueService.GetQueue().Where(q => q.Album != null).Select(q => q.Album.Id);
             var missing = albums.Where(e => !queue.Contains(e.Id)).ToList();
 
-            SearchForBulkAlbums(missing, message.Trigger == CommandTrigger.Manual).GetAwaiter().GetResult();
+            SearchForMissingAlbums(missing, message.Trigger == CommandTrigger.Manual).GetAwaiter().GetResult();
         }
 
         public void Execute(CutoffUnmetAlbumSearchCommand message)
