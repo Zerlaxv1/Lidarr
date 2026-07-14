@@ -45,7 +45,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             foreach (var album in subject.Albums)
             {
                 var tracksMissing = _missingFilesCache.Get(album.Id.ToString(),
-                    () => _trackService.TracksWithoutFiles(album.Id).Any(),
+                    () => _trackService.TracksWithoutFiles(album.Id).Any(t => t.Monitored),
                     TimeSpan.FromSeconds(30));
                 var trackFiles = _mediaFileService.GetFilesByAlbum(album.Id);
 

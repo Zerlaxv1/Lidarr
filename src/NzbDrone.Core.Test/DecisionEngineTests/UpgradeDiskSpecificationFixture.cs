@@ -103,9 +103,20 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         {
             Mocker.GetMock<ITrackService>()
                   .Setup(c => c.TracksWithoutFiles(It.IsAny<int>()))
-                .Returns(new List<Track> { new Track() });
+                .Returns(new List<Track> { new Track { Monitored = true } });
 
             Subject.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_not_treat_album_as_incomplete_when_only_unmonitored_tracks_are_missing()
+        {
+            Mocker.GetMock<ITrackService>()
+                  .Setup(c => c.TracksWithoutFiles(It.IsAny<int>()))
+                  .Returns(new List<Track> { new Track { Monitored = false } });
+
+            // both existing files are FLAC, report is MP3-256: not an upgrade -> must reject
+            Subject.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeFalse();
         }
 
         [Test]
