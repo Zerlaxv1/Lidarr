@@ -1,8 +1,10 @@
 import { createAction } from 'redux-actions';
 import { filterTypes, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
+import updateAlbums from 'Utilities/Album/updateAlbums';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import serverSideCollectionHandlers from 'Utilities/serverSideCollectionHandlers';
+import getSectionState from 'Utilities/State/getSectionState';
 import translate from 'Utilities/String/translate';
 import createBatchToggleAlbumMonitoredHandler from './Creators/createBatchToggleAlbumMonitoredHandler';
 import createHandleActions from './Creators/createHandleActions';
@@ -277,6 +279,12 @@ export const actionHandlers = handleThunks({
       monitored
     } = payload;
 
+    const state = getSectionState(getState(), 'wanted.missing', true);
+
+    dispatch(updateAlbums('wanted.missing', state.items, trackIds, {
+      isSaving: true
+    }));
+
     const promise = createAjaxRequest({
       url: '/track/monitor',
       method: 'PUT',
@@ -285,7 +293,18 @@ export const actionHandlers = handleThunks({
     }).request;
 
     promise.done(() => {
+      dispatch(updateAlbums('wanted.missing', state.items, trackIds, {
+        isSaving: false,
+        monitored
+      }));
+
       dispatch(fetchMissing());
+    });
+
+    promise.fail(() => {
+      dispatch(updateAlbums('wanted.missing', state.items, trackIds, {
+        isSaving: false
+      }));
     });
   },
 
