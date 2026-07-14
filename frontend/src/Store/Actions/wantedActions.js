@@ -1,6 +1,7 @@
 import { createAction } from 'redux-actions';
 import { filterTypes, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import serverSideCollectionHandlers from 'Utilities/serverSideCollectionHandlers';
 import translate from 'Utilities/String/translate';
 import createBatchToggleAlbumMonitoredHandler from './Creators/createBatchToggleAlbumMonitoredHandler';
@@ -22,7 +23,7 @@ export const defaultState = {
     isFetching: false,
     isPopulated: false,
     pageSize: 20,
-    sortKey: 'releaseDate',
+    sortKey: 'albums.releaseDate',
     sortDirection: sortDirections.DESCENDING,
     error: null,
     items: [],
@@ -41,28 +42,23 @@ export const defaultState = {
         isVisible: true
       },
       {
-        name: 'albumType',
-        label: () => translate('AlbumType'),
+        name: 'absoluteTrackNumber',
+        label: '#',
         isSortable: true,
         isVisible: true
       },
       {
-        name: 'releaseDate',
+        name: 'title',
+        label: () => translate('Title'),
+        isSortable: true,
+        isVisible: true
+      },
+      {
+        name: 'albums.releaseDate',
         label: () => translate('ReleaseDate'),
         isSortable: true,
         isVisible: true
       },
-      {
-        name: 'albums.lastSearchTime',
-        label: () => translate('LastSearched'),
-        isSortable: true,
-        isVisible: false
-      },
-      // {
-      //   name: 'status',
-      //   label: 'Status',
-      //   isVisible: true
-      // },
       {
         name: 'actions',
         columnLabel: () => translate('Actions'),
@@ -207,7 +203,7 @@ export const SET_MISSING_FILTER = 'wanted/missing/setMissingFilter';
 export const SET_MISSING_TABLE_OPTION = 'wanted/missing/setMissingTableOption';
 export const CLEAR_MISSING = 'wanted/missing/clearMissing';
 
-export const BATCH_TOGGLE_MISSING_ALBUMS = 'wanted/missing/batchToggleMissingAlbums';
+export const BATCH_TOGGLE_MISSING_TRACKS = 'wanted/missing/batchToggleMissingTracks';
 
 export const FETCH_CUTOFF_UNMET = 'wanted/cutoffUnmet/fetchCutoffUnmet';
 export const GOTO_FIRST_CUTOFF_UNMET_PAGE = 'wanted/cutoffUnmet/gotoCutoffUnmetFirstPage';
@@ -236,7 +232,7 @@ export const setMissingFilter = createThunk(SET_MISSING_FILTER);
 export const setMissingTableOption = createAction(SET_MISSING_TABLE_OPTION);
 export const clearMissing = createAction(CLEAR_MISSING);
 
-export const batchToggleMissingAlbums = createThunk(BATCH_TOGGLE_MISSING_ALBUMS);
+export const batchToggleMissingTracks = createThunk(BATCH_TOGGLE_MISSING_TRACKS);
 
 export const fetchCutoffUnmet = createThunk(FETCH_CUTOFF_UNMET);
 export const gotoCutoffUnmetFirstPage = createThunk(GOTO_FIRST_CUTOFF_UNMET_PAGE);
@@ -269,10 +265,29 @@ export const actionHandlers = handleThunks({
       [serverSideCollectionHandlers.EXACT_PAGE]: GOTO_MISSING_PAGE,
       [serverSideCollectionHandlers.SORT]: SET_MISSING_SORT,
       [serverSideCollectionHandlers.FILTER]: SET_MISSING_FILTER
+    },
+    (getState, payload, data) => {
+      data.includeAlbum = true;
     }
   ),
 
-  [BATCH_TOGGLE_MISSING_ALBUMS]: createBatchToggleAlbumMonitoredHandler('wanted.missing', fetchMissing),
+  [BATCH_TOGGLE_MISSING_TRACKS]: function(getState, payload, dispatch) {
+    const {
+      trackIds,
+      monitored
+    } = payload;
+
+    const promise = createAjaxRequest({
+      url: '/track/monitor',
+      method: 'PUT',
+      data: JSON.stringify({ trackIds, monitored }),
+      dataType: 'json'
+    }).request;
+
+    promise.done(() => {
+      dispatch(fetchMissing());
+    });
+  },
 
   ...createServerSideCollectionHandlers(
     'wanted.cutoffUnmet',

@@ -61,7 +61,7 @@ class MissingConnector extends Component {
 
   componentDidUpdate(prevProps) {
     if (hasDifferentItems(prevProps.items, this.props.items)) {
-      const albumIds = selectUniqueIds(this.props.items, 'id');
+      const albumIds = selectUniqueIds(this.props.items, 'albumId');
       this.props.fetchQueueDetails({ albumIds });
     }
   }
@@ -120,8 +120,8 @@ class MissingConnector extends Component {
 
   onSearchSelectedPress = (selected) => {
     this.props.executeCommand({
-      name: commandNames.ALBUM_SEARCH,
-      albumIds: selected,
+      name: commandNames.TRACK_SEARCH,
+      trackIds: selected,
       commandFinished: this.repopulate
     });
   };

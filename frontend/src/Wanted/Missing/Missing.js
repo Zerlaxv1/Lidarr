@@ -87,10 +87,10 @@ class Missing extends Component {
   };
 
   onToggleSelectedPress = () => {
-    const albumIds = this.getSelectedIds();
+    const trackIds = this.getSelectedIds();
 
-    this.props.batchToggleMissingAlbums({
-      albumIds,
+    this.props.batchToggleMissingTracks({
+      trackIds,
       monitored: !getMonitoredValue(this.props)
     });
   };
@@ -312,7 +312,7 @@ Missing.propTypes = {
   isSaving: PropTypes.bool.isRequired,
   onFilterSelect: PropTypes.func.isRequired,
   onSearchSelectedPress: PropTypes.func.isRequired,
-  batchToggleMissingAlbums: PropTypes.func.isRequired,
+  batchToggleMissingTracks: PropTypes.func.isRequired,
   onSearchAllMissingPress: PropTypes.func.isRequired
 };
 
