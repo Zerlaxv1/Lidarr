@@ -16,6 +16,7 @@ using Lidarr.Api.V1.RootFolders;
 using Lidarr.Api.V1.System.Plugins;
 using Lidarr.Api.V1.System.Tasks;
 using Lidarr.Api.V1.Tags;
+using Lidarr.Api.V1.Tracks;
 using Microsoft.AspNetCore.SignalR.Client;
 using NLog;
 using NLog.Config;
@@ -57,7 +58,7 @@ namespace NzbDrone.Integration.Test
         public ClientBase<RootFolderResource> RootFolders;
         public ArtistClient Artist;
         public ClientBase<TagResource> Tags;
-        public ClientBase<AlbumResource> WantedMissing;
+        public ClientBase<TrackResource> WantedMissing;
         public ClientBase<AlbumResource> WantedCutoffUnmet;
 
         private List<SignalRMessage> _signalRReceived;
@@ -124,7 +125,7 @@ namespace NzbDrone.Integration.Test
             RootFolders = new ClientBase<RootFolderResource>(RestClient, ApiKey);
             Artist = new ArtistClient(RestClient, ApiKey);
             Tags = new ClientBase<TagResource>(RestClient, ApiKey);
-            WantedMissing = new ClientBase<AlbumResource>(RestClient, ApiKey, "wanted/missing");
+            WantedMissing = new ClientBase<TrackResource>(RestClient, ApiKey, "wanted/missing");
             WantedCutoffUnmet = new ClientBase<AlbumResource>(RestClient, ApiKey, "wanted/cutoff");
         }
 

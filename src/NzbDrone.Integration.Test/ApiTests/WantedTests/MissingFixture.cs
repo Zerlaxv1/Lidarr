@@ -29,7 +29,7 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         {
             EnsureNoArtist("8ac6cc32-8ddf-43b1-9ac4-4b04f9053176", "Alien Ant Farm");
 
-            var result = WantedMissing.GetPaged(0, 15, "releaseDate", "desc");
+            var result = WantedMissing.GetPaged(0, 15, "albums.releaseDate", "desc");
 
             result.Records.Should().BeEmpty();
         }
@@ -40,7 +40,7 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         {
             EnsureArtist("8ac6cc32-8ddf-43b1-9ac4-4b04f9053176", "Alien Ant Farm", true);
 
-            var result = WantedMissing.GetPaged(0, 15, "releaseDate", "desc");
+            var result = WantedMissing.GetPaged(0, 15, "albums.releaseDate", "desc");
 
             result.Records.Should().NotBeEmpty();
         }
@@ -51,7 +51,7 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         {
             EnsureArtist("8ac6cc32-8ddf-43b1-9ac4-4b04f9053176", "Alien Ant Farm", true);
 
-            var result = WantedMissing.GetPaged(0, 15, "releaseDate", "desc");
+            var result = WantedMissing.GetPaged(0, 15, "albums.releaseDate", "desc", "includeArtist", true);
 
             result.Records.First().Artist.Should().NotBeNull();
             result.Records.First().Artist.ArtistName.Should().Be("Alien Ant Farm");
@@ -63,7 +63,7 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         {
             EnsureArtist("8ac6cc32-8ddf-43b1-9ac4-4b04f9053176", "Alien Ant Farm", false);
 
-            var result = WantedMissing.GetPaged(0, 15, "releaseDate", "desc");
+            var result = WantedMissing.GetPaged(0, 15, "albums.releaseDate", "desc");
 
             result.Records.Should().BeEmpty();
         }
@@ -74,7 +74,7 @@ namespace NzbDrone.Integration.Test.ApiTests.WantedTests
         {
             EnsureArtist("8ac6cc32-8ddf-43b1-9ac4-4b04f9053176", "Alien Ant Farm", false);
 
-            var result = WantedMissing.GetPaged(0, 15, "releaseDate", "desc", "monitored", false);
+            var result = WantedMissing.GetPaged(0, 15, "albums.releaseDate", "desc", "monitored", false);
 
             result.Records.Should().NotBeEmpty();
         }
