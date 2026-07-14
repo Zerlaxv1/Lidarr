@@ -103,6 +103,39 @@ namespace NzbDrone.Core.Test.ArtistStatsTests
         }
 
         [Test]
+        public void should_not_count_unmonitored_tracks_in_track_count()
+        {
+            // one monitored fileless track + one unmonitored fileless track
+            // on the fixture's existing monitored, released album
+            _album.Monitored = true;
+            Db.Update(_album);
+
+            var monitoredTrack = Builder<Track>.CreateNew()
+                .With(e => e.ForeignTrackId = "monitored-track")
+                .With(e => e.TrackFileId = 0)
+                .With(e => e.Artist = _artist)
+                .With(e => e.AlbumReleaseId = _release.Id)
+                .With(e => e.Monitored = true)
+                .BuildNew();
+            Db.Insert(monitoredTrack);
+
+            var unmonitoredTrack = Builder<Track>.CreateNew()
+                .With(e => e.ForeignTrackId = "unmonitored-track")
+                .With(e => e.TrackFileId = 0)
+                .With(e => e.Artist = _artist)
+                .With(e => e.AlbumReleaseId = _release.Id)
+                .With(e => e.Monitored = false)
+                .BuildNew();
+            Db.Insert(unmonitoredTrack);
+
+            var stats = Subject.ArtistStatistics(_artist.Id);
+
+            stats.Should().HaveCount(1);
+            stats.First().TotalTrackCount.Should().Be(2);
+            stats.First().TrackCount.Should().Be(1);
+        }
+
+        [Test]
         public void should_have_size_on_disk_of_zero_when_no_track_file()
         {
             GivenTrack();
