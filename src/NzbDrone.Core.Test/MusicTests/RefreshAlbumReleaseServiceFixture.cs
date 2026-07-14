@@ -134,5 +134,27 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IReleaseService>()
                 .Verify(v => v.UpdateMany(It.Is<List<AlbumRelease>>(s => s.First().ForeignReleaseId == newInfo.ForeignReleaseId)));
         }
+
+        [Test]
+        public void new_tracks_should_inherit_monitored_from_album()
+        {
+            _release.Album = Builder<Album>.CreateNew().With(x => x.Monitored = true).Build();
+
+            var newTrack = Builder<Track>.CreateNew()
+                .With(x => x.AlbumReleaseId = _release.Id)
+                .With(x => x.ArtistMetadata = _metadata)
+                .With(x => x.ArtistMetadataId = _metadata.Id)
+                .With(x => x.ForeignTrackId = "brand-new-track")
+                .With(x => x.Monitored = false)
+                .Build();
+
+            var newInfo = _release.JsonClone();
+            newInfo.Tracks = _tracks.Concat(new[] { newTrack }).ToList();
+
+            Subject.RefreshEntityInfo(_release, new List<AlbumRelease> { newInfo }, false, false, null);
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(v => v.InsertMany(It.Is<List<Track>>(x => x.Count == 1 && x.All(t => t.Monitored))));
+        }
     }
 }

@@ -93,6 +93,10 @@ namespace NzbDrone.Core.Music
             child.AlbumRelease = entity;
             child.ArtistMetadataId = child.ArtistMetadata.Value.Id;
 
+            // new tracks from metadata inherit the album's monitored flag
+            // (C# default false would make every new album invisible to song mode)
+            child.Monitored = entity.Album?.Value?.Monitored ?? true;
+
             // make sure title is not null
             child.Title = child.Title ?? "Unknown";
         }
