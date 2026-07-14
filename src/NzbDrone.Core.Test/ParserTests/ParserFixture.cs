@@ -271,5 +271,21 @@ namespace NzbDrone.Core.Test.ParserTests
             parseResult.ArtistName.Should().Be("Michael Buble");
             parseResult.AlbumTitle.Should().Be("Christmas");
         }
+
+        [Test]
+        public void should_parse_single_track_release_title_with_track_marker_brackets()
+        {
+            var artist = new Artist { Name = "System of a Down" };
+            var albums = new List<Album> { new Album { Title = "Mezmerize" } };
+
+            var result = Parser.Parser.ParseAlbumTitleWithSearchCriteria(
+                "System of a Down - Mezmerize (2005) [FLAC 16bit] [Track: B.Y.O.B.] [WEB]",
+                artist,
+                albums);
+
+            result.Should().NotBeNull();
+            result.ArtistName.Should().Be("System of a Down");
+            result.AlbumTitle.Should().Be("Mezmerize");
+        }
     }
 }

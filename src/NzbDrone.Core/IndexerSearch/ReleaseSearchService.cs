@@ -17,6 +17,7 @@ namespace NzbDrone.Core.IndexerSearch
     {
         Task<List<DownloadDecision>> AlbumSearch(int albumId, bool missingOnly, bool userInvokedSearch, bool interactiveSearch);
         Task<List<DownloadDecision>> ArtistSearch(int artistId, bool missingOnly, bool userInvokedSearch, bool interactiveSearch);
+        Task<List<DownloadDecision>> TrackSearch(int trackId, bool userInvokedSearch, bool interactiveSearch);
     }
 
     public class ReleaseSearchService : ISearchForReleases
@@ -24,18 +25,21 @@ namespace NzbDrone.Core.IndexerSearch
         private readonly IIndexerFactory _indexerFactory;
         private readonly IAlbumService _albumService;
         private readonly IArtistService _artistService;
+        private readonly ITrackService _trackService;
         private readonly IMakeDownloadDecision _makeDownloadDecision;
         private readonly Logger _logger;
 
         public ReleaseSearchService(IIndexerFactory indexerFactory,
                                 IAlbumService albumService,
                                 IArtistService artistService,
+                                ITrackService trackService,
                                 IMakeDownloadDecision makeDownloadDecision,
                                 Logger logger)
         {
             _indexerFactory = indexerFactory;
             _albumService = albumService;
             _artistService = artistService;
+            _trackService = trackService;
             _makeDownloadDecision = makeDownloadDecision;
             _logger = logger;
         }
@@ -94,6 +98,33 @@ namespace NzbDrone.Core.IndexerSearch
             downloadDecisions.AddRange(decisions);
 
             return DeDupeDecisions(downloadDecisions);
+        }
+
+        public async Task<List<DownloadDecision>> TrackSearch(int trackId, bool userInvokedSearch, bool interactiveSearch)
+        {
+            var track = _trackService.GetTrack(trackId);
+            var album = _albumService.FindAlbumByTrackId(trackId);
+            var artist = _artistService.GetArtist(album.ArtistId);
+
+            var searchSpec = Get<TrackSearchCriteria>(artist, new List<Album> { album }, userInvokedSearch, interactiveSearch);
+
+            searchSpec.AlbumTitle = album.Title;
+            if (album.ReleaseDate.HasValue)
+            {
+                searchSpec.AlbumYear = album.ReleaseDate.Value.Year;
+            }
+
+            if (album.Disambiguation.IsNotNullOrWhiteSpace())
+            {
+                searchSpec.Disambiguation = album.Disambiguation;
+            }
+
+            searchSpec.TrackTitle = track.Title;
+            searchSpec.Tracks = new List<Track> { track };
+
+            var decisions = await Dispatch(indexer => indexer.Fetch(searchSpec), searchSpec);
+
+            return DeDupeDecisions(decisions);
         }
 
         private TSpec Get<TSpec>(Artist artist, List<Album> albums, bool userInvokedSearch, bool interactiveSearch)
