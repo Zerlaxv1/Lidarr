@@ -24,7 +24,7 @@ function createMapStateToProps() {
         isArtistFetching: artist.isFetching,
         isArtistPopulated: artist.isPopulated,
         isSearchingForMissingAlbums,
-        isSaving: missing.items.filter((m) => m.isSaving).length > 1,
+        isSaving: missing.items.filter((m) => m.isSaving).length > 0,
         ...missing
       };
     }
