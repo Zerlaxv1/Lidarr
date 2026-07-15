@@ -130,5 +130,14 @@ namespace NzbDrone.Core.Test.MetadataSource.SkyHook
                 cast.Title.Should().Be(expected);
             }
         }
+
+        [Test]
+        public void should_find_albums_by_song_title_with_song_prefix()
+        {
+            var results = Subject.SearchForNewEntity("song: chop suey");
+
+            results.Should().NotBeEmpty();
+            results.Should().AllBeOfType<Album>();
+        }
     }
 }

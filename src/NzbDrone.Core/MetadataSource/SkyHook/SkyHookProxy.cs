@@ -360,6 +360,49 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
             }
         }
 
+        private List<Album> SearchForNewAlbumsByTrackTitle(string trackTitle)
+        {
+            // ponytail: direct MusicBrainz call because api.lidarr.audio has no
+            // recording search (verified: type accepts only artist|album|all).
+            try
+            {
+                var mbRequest = new HttpRequestBuilder("https://musicbrainz.org/ws/2/recording")
+                    .AddQueryParam("query", trackTitle)
+                    .AddQueryParam("fmt", "json")
+                    .AddQueryParam("limit", "10")
+                    .Build();
+
+                var mbResponse = _httpClient.Get<RecordingSearchResource>(mbRequest);
+
+                var recordingIds = mbResponse.Resource?.Recordings?
+                    .Select(x => x.Id)
+                    .Where(x => x.IsNotNullOrWhiteSpace())
+                    .Distinct()
+                    .ToList();
+
+                if (recordingIds == null || recordingIds.Count == 0)
+                {
+                    return new List<Album>();
+                }
+
+                return SearchForNewAlbumByRecordingIds(recordingIds);
+            }
+            catch (HttpException ex)
+            {
+                _logger.Warn(ex);
+                throw new SkyHookException("Search for '{0}' failed. Unable to communicate with MusicBrainz. {1}", ex, trackTitle, ex.Message);
+            }
+            catch (SkyHookException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, ex.Message);
+                throw new SkyHookException("Search for '{0}' failed. Invalid response received from MusicBrainz.", trackTitle);
+            }
+        }
+
         public List<object> SearchForNewEntity(string title)
         {
             var lowerTitle = title.ToLowerInvariant();
@@ -394,6 +437,18 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
                 }
 
                 return new List<object>();
+            }
+
+            if (lowerTitle.StartsWith("song:") || lowerTitle.StartsWith("track:"))
+            {
+                var trackQuery = title.Split(new[] { ':' }, 2)[1].Trim();
+
+                if (trackQuery.IsNullOrWhiteSpace())
+                {
+                    return new List<object>();
+                }
+
+                return SearchForNewAlbumsByTrackTitle(trackQuery).Cast<object>().ToList();
             }
 
             try
