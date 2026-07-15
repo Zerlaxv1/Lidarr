@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -197,7 +198,7 @@ namespace NzbDrone.Core.Parser
         public AcoustId ParseFpcalcTextOutput(string output)
         {
             var durationstring = Regex.Match(output, @"(?<=DURATION=)[\d\.]+(?=\s)").Value;
-            if (durationstring.IsNullOrWhiteSpace() || !double.TryParse(durationstring, out var duration))
+            if (durationstring.IsNullOrWhiteSpace() || !double.TryParse(durationstring, NumberStyles.Float, CultureInfo.InvariantCulture, out var duration))
             {
                 return null;
             }
