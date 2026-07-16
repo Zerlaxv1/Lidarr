@@ -117,13 +117,28 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                     continue;
                 }
 
+                var newRelease = albumDecision.First().Item.Release;
+
                 if (replaceExisting)
                 {
-                    RemoveExistingTrackFiles(artist, album);
+                    // A wholesale wipe is only correct when the incoming import replaces
+                    // the release completely. Partial imports (song-mode single-track
+                    // grabs, partial album downloads) must leave the album's other files
+                    // alone — UpgradeMediaFileService already replaces existing files for
+                    // exactly the tracks this import covers.
+                    var coveredTracks = decisionList.SelectMany(d => d.Item.Tracks).Select(t => t.Id).Distinct().Count();
+
+                    if (coveredTracks >= newRelease.TrackCount)
+                    {
+                        RemoveExistingTrackFiles(artist, album);
+                    }
+                    else
+                    {
+                        _logger.Debug("Import covers {0}/{1} tracks of {2} — keeping existing album files", coveredTracks, newRelease.TrackCount, newRelease);
+                    }
                 }
 
                 // set the correct release to be monitored before importing the new files
-                var newRelease = albumDecision.First().Item.Release;
                 _logger.Debug("Updating release to {0} [{1} tracks]", newRelease, newRelease.TrackCount);
                 album.AlbumReleases = _releaseService.SetMonitored(newRelease);
 

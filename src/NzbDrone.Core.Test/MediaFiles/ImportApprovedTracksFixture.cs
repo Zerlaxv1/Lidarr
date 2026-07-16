@@ -5,6 +5,7 @@ using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
@@ -231,6 +232,47 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IUpgradeMediaFiles>()
                 .Verify(v => v.UpgradeTrackFile(It.Is<TrackFile>(e => e.SceneName == firstDecision.Item.SceneName), _approvedDecisions.First().Item, false),
                     Times.Once());
+        }
+
+        [Test]
+        public void should_not_remove_existing_album_files_when_import_does_not_cover_whole_release()
+        {
+            // song mode: a 1-of-5-tracks import must leave the album's other files alone
+            _approvedDecisions.First().Item.Release.TrackCount = 5;
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByAlbum(It.IsAny<int>()))
+                .Returns(new List<TrackFile> { Builder<TrackFile>.CreateNew().Build() });
+
+            Subject.Import(new List<ImportDecision<LocalTrack>> { _approvedDecisions.First() }, true);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.Upgrade), Times.Never());
+        }
+
+        [Test]
+        public void should_remove_existing_album_files_when_import_covers_whole_release()
+        {
+            _approvedDecisions.First().Item.Release.TrackCount = 5;
+
+            var artistPath = _approvedDecisions.First().Item.Artist.Path;
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.GetParentFolder(It.IsAny<string>()))
+                .Returns<string>(p => Path.GetDirectoryName(p));
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByAlbum(It.IsAny<int>()))
+                .Returns(new List<TrackFile>
+                {
+                    Builder<TrackFile>.CreateNew()
+                        .With(f => f.Path = Path.Combine(artistPath, "old - 01 - track.mp3"))
+                        .Build()
+                });
+
+            Subject.Import(_approvedDecisions, true);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.Upgrade), Times.Once());
         }
     }
 }

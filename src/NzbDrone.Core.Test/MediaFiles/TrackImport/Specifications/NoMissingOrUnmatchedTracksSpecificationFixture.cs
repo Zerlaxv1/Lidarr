@@ -62,5 +62,13 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Specifications
             var item = Given(2, new List<Track>());
             Subject.IsSatisfiedBy(item, null).Accepted.Should().BeTrue();
         }
+
+        [Test]
+        public void should_accept_when_not_a_new_download()
+        {
+            var item = Given(2, new List<Track> { new Track { Monitored = true } });
+            item.NewDownload = false;
+            Subject.IsSatisfiedBy(item, null).Accepted.Should().BeTrue();
+        }
     }
 }
