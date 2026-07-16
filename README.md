@@ -9,6 +9,9 @@
 
 Lidarr is a music collection manager for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new tracks from your favorite artists and will grab, sort and rename them. It can also be configured to automatically upgrade the quality of files already downloaded when a better quality format becomes available.
 
+> [!NOTE]
+> This is [Zerlaxv1/Lidarr](https://github.com/Zerlaxv1/Lidarr)'s `song-mode` fork: adds track-level ("song mode") monitoring and per-track search on top of upstream Lidarr, so individual songs can be monitored/acquired instead of whole albums. Pairs with the [Tubifarry `song-mode` fork](https://github.com/Zerlaxv1/Tubifarry/tree/song-mode) for per-track downloads.
+
 > [!WARNING]
 > NOTICE - The Lidarr Metadata Server is recovering and rebuilding the cache which is impacting adding artists, library imports, etc. Please follow [GHI 5498](https://github.com/Lidarr/Lidarr/issues/5498) or see Discord for details.
 
