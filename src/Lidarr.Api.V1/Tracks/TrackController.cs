@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Lidarr.Api.V1.Albums;
 using Lidarr.Http;
 using Lidarr.Http.REST;
 using Microsoft.AspNetCore.Mvc;
@@ -60,7 +61,15 @@ namespace Lidarr.Api.V1.Tracks
                 return new List<TrackResource>();
             }
 
-            return MapToResource(_trackService.SearchTracksByTitle(term, limit), false, false);
+            var tracks = _trackService.SearchTracksByTitle(term, limit);
+            var resources = MapToResource(tracks, true, false);
+
+            for (int i = 0; i < resources.Count; i++)
+            {
+                resources[i].Album = tracks[i].Album.ToResource();
+            }
+
+            return resources;
         }
 
         [HttpPut("monitor")]

@@ -12,6 +12,7 @@ namespace NzbDrone.Core.Test.MusicTests
     {
         private AlbumRelease _monitoredRelease;
         private AlbumRelease _unmonitoredRelease;
+        private ArtistMetadata _artistMeta;
 
         [SetUp]
         public void Setup()
@@ -20,6 +21,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .With(a => a.Id = 0)
                 .Build();
             Db.Insert(meta);
+            _artistMeta = meta;
 
             var artist = Builder<Artist>.CreateNew()
                 .With(a => a.ArtistMetadataId = meta.Id)
@@ -83,7 +85,8 @@ namespace NzbDrone.Core.Test.MusicTests
         {
             var results = Subject.SearchTracksByTitle("Museum", 10);
 
-            results.Should().OnlyContain(t => t.Artist != null && t.Album != null);
+            results.Should().OnlyContain(t => t.Artist.IsLoaded && t.Album != null);
+            results.Should().OnlyContain(t => t.Artist.Value.ArtistMetadataId == _artistMeta.Id);
         }
 
         [Test]
