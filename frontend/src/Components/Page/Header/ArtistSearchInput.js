@@ -6,11 +6,14 @@ import Icon from 'Components/Icon';
 import keyboardShortcuts, { shortcuts } from 'Components/keyboardShortcuts';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { icons } from 'Helpers/Props';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import ArtistSearchResult from './ArtistSearchResult';
 import FuseWorker from './fuse.worker';
+import TrackSearchResult from './TrackSearchResult';
 import styles from './ArtistSearchInput.css';
 
 const ADD_NEW_TYPE = 'addNew';
+const TRACK_TYPE = 'track';
 
 class ArtistSearchInput extends Component {
 
@@ -22,10 +25,12 @@ class ArtistSearchInput extends Component {
 
     this._autosuggest = null;
     this._worker = null;
+    this._abortTrackRequest = null;
 
     this.state = {
       value: '',
-      suggestions: []
+      suggestions: [],
+      trackSuggestions: []
     };
   }
 
@@ -38,6 +43,10 @@ class ArtistSearchInput extends Component {
       this._worker.removeEventListener('message', this.onSuggestionsReceived, false);
       this._worker.terminate();
       this._worker = null;
+    }
+
+    if (this._abortTrackRequest) {
+      this._abortTrackRequest();
     }
   }
 
@@ -96,6 +105,14 @@ class ArtistSearchInput extends Component {
       );
     }
 
+    if (item.type === TRACK_TYPE) {
+      return (
+        <TrackSearchResult
+          {...item.item}
+        />
+      );
+    }
+
     return (
       <ArtistSearchResult
         {...item.item}
@@ -109,10 +126,16 @@ class ArtistSearchInput extends Component {
     this.props.onGoToArtist(item.item.foreignArtistId);
   }
 
+  goToTrackAlbum(item) {
+    this.setState({ value: '' });
+    this.props.onGoToAlbum(item.item.album.foreignAlbumId);
+  }
+
   reset() {
     this.setState({
       value: '',
       suggestions: [],
+      trackSuggestions: [],
       loading: false
     });
   }
@@ -185,6 +208,7 @@ class ArtistSearchInput extends Component {
     }
 
     this.requestSuggestions(value);
+    this.requestTrackSuggestions(value);
   };
 
   requestSuggestions = _.debounce((value) => {
@@ -207,6 +231,36 @@ class ArtistSearchInput extends Component {
 
       this.getWorker().postMessage(payload);
     }
+  }, 250);
+
+  requestTrackSuggestions = _.debounce((value) => {
+    if (this._abortTrackRequest) {
+      this._abortTrackRequest();
+    }
+
+    if (!value) {
+      this.setState({ trackSuggestions: [] });
+      return;
+    }
+
+    const { request, abortRequest } = createAjaxRequest({
+      url: '/track/lookup',
+      data: { term: value }
+    });
+
+    this._abortTrackRequest = abortRequest;
+
+    request.done((data) => {
+      this.setState({
+        trackSuggestions: data.map((track) => ({ type: TRACK_TYPE, item: track, title: track.title }))
+      });
+    });
+
+    request.fail((xhr) => {
+      if (!xhr.aborted) {
+        this.setState({ trackSuggestions: [] });
+      }
+    });
   }, 250);
 
   onSuggestionsReceived = (message) => {
@@ -245,6 +299,7 @@ class ArtistSearchInput extends Component {
   onSuggestionsClearRequested = () => {
     this.setState({
       suggestions: [],
+      trackSuggestions: [],
       loading: false
     });
   };
@@ -252,6 +307,8 @@ class ArtistSearchInput extends Component {
   onSuggestionSelected = (event, { suggestion }) => {
     if (suggestion.type === ADD_NEW_TYPE) {
       this.props.onGoToAddNewArtist(this.state.value);
+    } else if (suggestion.type === TRACK_TYPE) {
+      this.goToTrackAlbum(suggestion);
     } else {
       this.goToArtist(suggestion);
     }
@@ -264,7 +321,8 @@ class ArtistSearchInput extends Component {
     const {
       value,
       loading,
-      suggestions
+      suggestions,
+      trackSuggestions
     } = this.state;
 
     const suggestionGroups = [];
@@ -274,6 +332,13 @@ class ArtistSearchInput extends Component {
         title: 'Existing Artist',
         loading,
         suggestions
+      });
+    }
+
+    if (trackSuggestions.length) {
+      suggestionGroups.push({
+        title: 'Track',
+        suggestions: trackSuggestions
       });
     }
 
@@ -339,6 +404,7 @@ ArtistSearchInput.propTypes = {
   artists: PropTypes.arrayOf(PropTypes.object).isRequired,
   onGoToArtist: PropTypes.func.isRequired,
   onGoToAddNewArtist: PropTypes.func.isRequired,
+  onGoToAlbum: PropTypes.func.isRequired,
   bindShortcut: PropTypes.func.isRequired
 };
 

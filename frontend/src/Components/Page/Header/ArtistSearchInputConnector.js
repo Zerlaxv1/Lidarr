@@ -60,6 +60,10 @@ function createMapDispatchToProps(dispatch, props) {
 
     onGoToAddNewArtist(query) {
       dispatch(push(`${window.Lidarr.urlBase}/add/search?term=${encodeURIComponent(query)}`));
+    },
+
+    onGoToAlbum(foreignAlbumId) {
+      dispatch(push(`${window.Lidarr.urlBase}/album/${foreignAlbumId}`));
     }
   };
 }
