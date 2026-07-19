@@ -140,7 +140,16 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
 
                 // set the correct release to be monitored before importing the new files
                 _logger.Debug("Updating release to {0} [{1} tracks]", newRelease, newRelease.TrackCount);
+                var oldMonitoredReleases = (_releaseService.GetReleasesByAlbum(album.Id) ?? new List<AlbumRelease>()).Where(x => x.Monitored && x.Id != newRelease.Id).ToList();
                 album.AlbumReleases = _releaseService.SetMonitored(newRelease);
+
+                // This event's AlbumEditedEvent(album, album) below always compares equal
+                // (same object as both Album and OldAlbum), so AlbumEditedService's own
+                // relink never fires for this path — call it directly here instead.
+                if (oldMonitoredReleases.Any())
+                {
+                    _trackService.RelinkTrackFilesToRelease(newRelease, oldMonitoredReleases);
+                }
 
                 // Publish album edited event.
                 // Deliberately don't put in the old album since we don't want to trigger an ArtistScan.

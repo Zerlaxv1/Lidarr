@@ -22,22 +22,32 @@ namespace NzbDrone.Core.Music
 
         public void Handle(AlbumEditedEvent message)
         {
-            if (message.Album.AlbumReleases.IsLoaded && message.OldAlbum.AlbumReleases.IsLoaded)
+            if (!message.Album.AlbumReleases.IsLoaded || !message.OldAlbum.AlbumReleases.IsLoaded)
             {
-                var new_monitored = new HashSet<int>(message.Album.AlbumReleases.Value.Where(x => x.Monitored).Select(x => x.Id));
-                var old_monitored = new HashSet<int>(message.OldAlbum.AlbumReleases.Value.Where(x => x.Monitored).Select(x => x.Id));
-                if (!new_monitored.SetEquals(old_monitored) ||
-                    (!message.OldAlbum.AnyReleaseOk && message.Album.AnyReleaseOk))
-                {
-                    // Unlink any old track files
-                    var tracks = _trackService.GetTracksByAlbum(message.Album.Id);
-                    tracks.ForEach(x => x.TrackFileId = 0);
-                    _trackService.SetFileIds(tracks);
-
-                    var folders = new List<string> { message.Album.Artist.Value.Path };
-                    _commandQueueManager.Push(new RescanFoldersCommand(folders, FilterFilesType.Matched, false, null));
-                }
+                return;
             }
+
+            var newMonitored = message.Album.AlbumReleases.Value.Where(x => x.Monitored).ToList();
+            var oldMonitored = message.OldAlbum.AlbumReleases.Value.Where(x => x.Monitored).ToList();
+            var newIds = new HashSet<int>(newMonitored.Select(x => x.Id));
+            var oldIds = new HashSet<int>(oldMonitored.Select(x => x.Id));
+
+            if (newIds.SetEquals(oldIds) && !(!message.OldAlbum.AnyReleaseOk && message.Album.AnyReleaseOk))
+            {
+                return;
+            }
+
+            // Re-link existing track files to the newly monitored release's tracks
+            // instead of blindly zeroing every TrackFileId and hoping a rescan finds
+            // them again — a plain rescan cannot recover this link (the file's own
+            // tags still pin it to the old, now-unmonitored release).
+            foreach (var newRelease in newMonitored)
+            {
+                _trackService.RelinkTrackFilesToRelease(newRelease, oldMonitored);
+            }
+
+            var folders = new List<string> { message.Album.Artist.Value.Path };
+            _commandQueueManager.Push(new RescanFoldersCommand(folders, FilterFilesType.Matched, false, null));
         }
     }
 }

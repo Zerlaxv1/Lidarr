@@ -274,5 +274,52 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IMediaFileService>()
                 .Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.Upgrade), Times.Once());
         }
+
+        [Test]
+        public void should_relink_track_files_when_switching_release_on_import()
+        {
+            var album = _approvedDecisions.First().Item.Album;
+            var newRelease = _approvedDecisions.First().Item.Release;
+
+            var oldRelease = Builder<AlbumRelease>.CreateNew()
+                .With(r => r.Id = newRelease.Id + 1)
+                .With(r => r.AlbumId = album.Id)
+                .With(r => r.Monitored = true)
+                .Build();
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(s => s.GetReleasesByAlbum(album.Id))
+                .Returns(new List<AlbumRelease> { oldRelease });
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(s => s.SetMonitored(It.IsAny<AlbumRelease>()))
+                .Returns(new List<AlbumRelease> { newRelease });
+
+            Subject.Import(_approvedDecisions, false);
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(s => s.RelinkTrackFilesToRelease(newRelease, It.Is<List<AlbumRelease>>(l => l.Single().Id == oldRelease.Id)), Times.Once());
+        }
+
+        [Test]
+        public void should_not_relink_track_files_when_release_already_monitored()
+        {
+            var album = _approvedDecisions.First().Item.Album;
+            var newRelease = _approvedDecisions.First().Item.Release;
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(s => s.GetReleasesByAlbum(album.Id))
+                .Returns(new List<AlbumRelease> { newRelease });
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(s => s.SetMonitored(It.IsAny<AlbumRelease>()))
+                .Returns(new List<AlbumRelease> { newRelease });
+
+            Subject.Import(_approvedDecisions, false);
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(s => s.RelinkTrackFilesToRelease(It.IsAny<AlbumRelease>(), It.IsAny<List<AlbumRelease>>()), Times.Never());
+        }
     }
 }
+
