@@ -32,6 +32,7 @@ namespace NzbDrone.Core.Music
         void SetFileIds(List<Track> tracks);
         void SetMonitored(IEnumerable<int> ids, bool monitored);
         List<Track> RelinkTrackFilesToRelease(AlbumRelease newRelease, List<AlbumRelease> oldReleases);
+        List<Track> SearchTracksByTitle(string title, int limit);
     }
 
     public class TrackService : ITrackService,
@@ -72,6 +73,11 @@ namespace NzbDrone.Core.Music
         public List<Track> GetTracksByRelease(int albumReleaseId)
         {
             return _trackRepository.GetTracksByRelease(albumReleaseId);
+        }
+
+        public List<Track> SearchTracksByTitle(string title, int limit)
+        {
+            return _trackRepository.SearchTracksByTitle(title, limit);
         }
 
         public List<Track> GetTracksByReleases(List<int> albumReleaseIds)

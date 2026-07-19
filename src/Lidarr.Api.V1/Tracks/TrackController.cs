@@ -3,6 +3,7 @@ using System.Linq;
 using Lidarr.Http;
 using Lidarr.Http.REST;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Music;
@@ -49,6 +50,17 @@ namespace Lidarr.Api.V1.Tracks
             }
 
             return MapToResource(_trackService.GetTracks(trackIds), false, false);
+        }
+
+        [HttpGet("lookup")]
+        public List<TrackResource> LookupTracks([FromQuery] string term, [FromQuery] int limit = 10)
+        {
+            if (term.IsNullOrWhiteSpace())
+            {
+                return new List<TrackResource>();
+            }
+
+            return MapToResource(_trackService.SearchTracksByTitle(term, limit), false, false);
         }
 
         [HttpPut("monitor")]

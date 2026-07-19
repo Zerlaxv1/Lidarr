@@ -22,6 +22,7 @@ namespace NzbDrone.Core.Music
         void SetFileId(List<Track> tracks);
         void DetachTrackFile(int trackFileId);
         void SetMonitored(IEnumerable<int> ids, bool monitored);
+        List<Track> SearchTracksByTitle(string title, int limit);
     }
 
     public class TrackRepository : BasicRepository<Track>, ITrackRepository
@@ -59,6 +60,24 @@ namespace NzbDrone.Core.Music
         public List<Track> GetTracksByRelease(int albumReleaseId)
         {
             return Query(t => t.AlbumReleaseId == albumReleaseId).ToList();
+        }
+
+        public List<Track> SearchTracksByTitle(string title, int limit)
+        {
+            var builder = Builder()
+                .Join<Track, AlbumRelease>((t, r) => t.AlbumReleaseId == r.Id)
+                .Join<AlbumRelease, Album>((r, a) => r.AlbumId == a.Id)
+                .Join<Album, Artist>((album, artist) => album.ArtistMetadataId == artist.ArtistMetadataId)
+                .Where<AlbumRelease>(r => r.Monitored == true)
+                .Where<Track>(t => t.Title.Contains(title));
+
+            return _database.QueryJoined<Track, AlbumRelease, Album, Artist>(builder, (track, release, album, artist) =>
+            {
+                track.AlbumRelease = release;
+                track.Album = album;
+                track.Artist = artist;
+                return track;
+            }).Take(limit).ToList();
         }
 
         public List<Track> GetTracksByReleases(List<int> albumReleaseIds)
