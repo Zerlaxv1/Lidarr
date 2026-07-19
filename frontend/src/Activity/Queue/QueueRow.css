@@ -28,3 +28,8 @@
   width: 90px;
   text-align: right;
 }
+
+.trackTitle {
+  color: var(--disabledColor);
+  font-size: $smallFontSize;
+}

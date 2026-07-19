@@ -25,6 +25,13 @@ import RemoveQueueItemModal from './RemoveQueueItemModal';
 import TimeleftCell from './TimeleftCell';
 import styles from './QueueRow.css';
 
+const TRACK_TITLE_REGEX = /\[Track:\s*(.+?)\]/i;
+
+function getTrackTitle(title) {
+  const match = TRACK_TITLE_REGEX.exec(title);
+  return match ? match[1] : null;
+}
+
 class QueueRow extends Component {
 
   //
@@ -175,6 +182,8 @@ class QueueRow extends Component {
             }
 
             if (name === 'albums.title') {
+              const trackTitle = getTrackTitle(title);
+
               return (
                 <TableRowCell key={name}>
                   {
@@ -185,6 +194,10 @@ class QueueRow extends Component {
                         disambiguation={album.disambiguation}
                       /> :
                       '-'
+                  }
+                  {
+                    trackTitle &&
+                      <span className={styles.trackTitle}> — {trackTitle}</span>
                   }
                 </TableRowCell>
               );
