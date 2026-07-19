@@ -548,5 +548,93 @@ namespace NzbDrone.Core.Test.ImportListTests
             Mocker.GetMock<IImportListExclusionService>()
                 .Verify(v => v.All(), Times.Never);
         }
+
+        private void WithSameAlbumSecondTrack(string trackTitle)
+        {
+            var importListItem2 = new ImportListItemInfo
+            {
+                Artist = "Linkin Park",
+                ArtistMusicBrainzId = "f59c5520-5f46-4d2c-b2c4-822eabf53419",
+                Album = "Meteora",
+                AlbumMusicBrainzId = "09474d62-17dd-3a4f-98fb-04c65f38a479",
+                TrackTitle = trackTitle
+            };
+            _importListReports.Add(importListItem2);
+        }
+
+        [Test]
+        public void should_monitor_only_matching_track_for_existing_album()
+        {
+            WithAlbumId();
+            WithArtistId();
+            WithExistingAlbum(true);
+            _importListReports.First().TrackTitle = "Track Two";
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, true, false);
+
+            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(v => v.SetMonitoredByTitle(1, It.Is<List<string>>(l => l.Single() == "Track Two")))
+                .Returns(new List<Track> { matchedTrack });
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(v => v.SetMonitoredByTitle(1, It.Is<List<string>>(l => l.Single() == "Track Two")), Times.Once());
+        }
+
+        [Test]
+        public void should_not_monitor_track_for_existing_album_when_should_monitor_existing_is_false()
+        {
+            WithAlbumId();
+            WithArtistId();
+            WithExistingAlbum(true);
+            _importListReports.First().TrackTitle = "Track Two";
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, false, false);
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(v => v.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>()), Times.Never());
+        }
+
+        [Test]
+        public void should_accumulate_track_titles_for_new_album_across_multiple_playlist_items()
+        {
+            WithArtistId();
+            WithAlbumId();
+            WithAlbum();
+            _importListReports.First().TrackTitle = "Track One";
+            WithSameAlbumSecondTrack("Track Two");
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, false, false);
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddAlbumService>()
+                .Verify(v => v.AddAlbums(It.Is<List<Album>>(t => t.Count == 1 &&
+                    t.First().AddOptions.MonitorTrackTitles.Count == 2 &&
+                    t.First().AddOptions.MonitorTrackTitles.Contains("Track One") &&
+                    t.First().AddOptions.MonitorTrackTitles.Contains("Track Two")),
+                    false, true));
+        }
+
+        [Test]
+        public void should_leave_album_monitored_true_for_song_mode_specific_album()
+        {
+            WithArtistId();
+            WithAlbumId();
+            WithAlbum();
+            _importListReports.First().TrackTitle = "Track One";
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, false, false);
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddAlbumService>()
+                .Verify(v => v.AddAlbums(It.Is<List<Album>>(t => t.Count == 1 && t.First().Monitored == true), false, true));
+        }
     }
 }

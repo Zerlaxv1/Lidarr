@@ -169,5 +169,65 @@ namespace NzbDrone.Core.Test.MusicTests
 
             result.Should().BeEmpty();
         }
+
+        [Test]
+        public void should_monitor_only_matching_titles_and_unmonitor_the_rest()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "Bliss", Monitored = false },
+                new Track { Id = 2, Title = "Muscle Museum", Monitored = true },
+                new Track { Id = 3, Title = "Uno", Monitored = true }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Bliss" });
+
+            result.Should().ContainSingle(t => t.Id == 1);
+            tracks.Single(t => t.Id == 1).Monitored.Should().BeTrue();
+            tracks.Single(t => t.Id == 2).Monitored.Should().BeFalse();
+            tracks.Single(t => t.Id == 3).Monitored.Should().BeFalse();
+
+            Mocker.GetMock<ITrackRepository>()
+                .Verify(s => s.UpdateMany(tracks), Times.Once());
+        }
+
+        [Test]
+        public void should_match_titles_case_and_punctuation_insensitively()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "B.Y.O.B.", Monitored = false }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "byob" });
+
+            result.Should().ContainSingle(t => t.Id == 1);
+        }
+
+        [Test]
+        public void should_return_empty_when_no_title_matches()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "Bliss", Monitored = true }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Nonexistent" });
+
+            result.Should().BeEmpty();
+            tracks.Single().Monitored.Should().BeFalse();
+        }
     }
 }

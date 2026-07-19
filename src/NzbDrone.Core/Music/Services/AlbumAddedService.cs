@@ -20,16 +20,19 @@ namespace NzbDrone.Core.Music
     {
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly IAlbumService _albumService;
+        private readonly ITrackService _trackService;
         private readonly Logger _logger;
         private readonly ICached<List<int>> _addedAlbumsCache;
 
         public AlbumAddedService(ICacheManager cacheManager,
                                    IManageCommandQueue commandQueueManager,
                                    IAlbumService albumService,
+                                   ITrackService trackService,
                                    Logger logger)
         {
             _commandQueueManager = commandQueueManager;
             _albumService = albumService;
+            _trackService = trackService;
             _logger = logger;
             _addedAlbumsCache = cacheManager.GetCache<List<int>>(GetType());
         }
@@ -61,6 +64,38 @@ namespace NzbDrone.Core.Music
             }
 
             _addedAlbumsCache.Remove(artistId.ToString());
+
+            var songModeAlbums = allAlbums.Where(x => x.AddOptions.MonitorTrackTitles.Any()).ToList();
+            ApplyPendingTrackMonitoring(songModeAlbums);
+        }
+
+        private void ApplyPendingTrackMonitoring(List<Album> albums)
+        {
+            if (albums.Empty())
+            {
+                return;
+            }
+
+            foreach (var album in albums)
+            {
+                var titles = album.AddOptions.MonitorTrackTitles;
+                _logger.Debug("Applying song-mode track monitoring for album [{0}], {1} title(s)", album.Id, titles.Count);
+
+                // Snapshot into a new list: titles is the live AddOptions.MonitorTrackTitles
+                // reference, which gets cleared below in this same iteration. Passing it
+                // directly would hand the callee (and any test double recording the call)
+                // a reference that no longer reflects what was actually requested.
+                var matched = _trackService.SetMonitoredByTitle(album.Id, titles.ToList());
+
+                if (matched.Empty())
+                {
+                    _logger.Warn("Song-mode track monitoring for album [{0}] matched no tracks for titles: {1}", album.Id, string.Join(", ", titles));
+                }
+
+                titles.Clear();
+            }
+
+            _albumService.SetAddOptions(albums);
         }
 
         public void Handle(AlbumInfoRefreshedEvent message)

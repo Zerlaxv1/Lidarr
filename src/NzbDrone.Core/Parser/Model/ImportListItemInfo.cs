@@ -11,6 +11,7 @@ namespace NzbDrone.Core.Parser.Model
         public string Album { get; set; }
         public string AlbumMusicBrainzId { get; set; }
         public DateTime ReleaseDate { get; set; }
+        public string TrackTitle { get; set; }
 
         public override string ToString()
         {

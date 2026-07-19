@@ -15,6 +15,7 @@ namespace NzbDrone.Core.Music.Events
         {
             Artist = artist;
             Added = new ReadOnlyCollection<Album>(added);
+            Updated = new ReadOnlyCollection<Album>(updated);
             Removed = new ReadOnlyCollection<Album>(removed);
         }
     }

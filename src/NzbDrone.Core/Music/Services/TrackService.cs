@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Music
         void SetMonitored(IEnumerable<int> ids, bool monitored);
         List<Track> RelinkTrackFilesToRelease(AlbumRelease newRelease, List<AlbumRelease> oldReleases);
         List<Track> SearchTracksByTitle(string title, int limit);
+        List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles);
     }
 
     public class TrackService : ITrackService,
@@ -191,6 +192,38 @@ namespace NzbDrone.Core.Music
             }
 
             return changed;
+        }
+
+        public List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles)
+        {
+            var normalizedTitles = new HashSet<string>(titles.Select(NormalizeTrackTitleForMatch));
+            var tracks = _trackRepository.GetTracksByAlbum(albumId);
+            var matched = new List<Track>();
+
+            foreach (var track in tracks)
+            {
+                var shouldMonitor = normalizedTitles.Contains(NormalizeTrackTitleForMatch(track.Title));
+                track.Monitored = shouldMonitor;
+
+                if (shouldMonitor)
+                {
+                    matched.Add(track);
+                }
+            }
+
+            _trackRepository.UpdateMany(tracks);
+
+            return matched;
+        }
+
+        // NormalizeTitle collapses delimiters (., -, _, etc.) to a single space rather than
+        // removing them, so "B.Y.O.B." normalizes to "b y o b" while "byob" normalizes to
+        // "byob" - not equal. Stripping the remaining spaces makes title matching fully
+        // punctuation-insensitive, which is what song-mode needs when comparing an
+        // import list's track title against the locally stored (MusicBrainz-sourced) one.
+        private static string NormalizeTrackTitleForMatch(string title)
+        {
+            return NzbDrone.Core.Parser.Parser.NormalizeTitle(title).Replace(" ", string.Empty);
         }
 
         public void Handle(ReleaseDeletedEvent message)

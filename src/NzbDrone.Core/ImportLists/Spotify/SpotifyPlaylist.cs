@@ -82,7 +82,8 @@ namespace NzbDrone.Core.ImportLists.Spotify
                         Artist = artistName,
                         Album = album.Name,
                         AlbumSpotifyId = album.Id,
-                        ReleaseDate = ParseSpotifyDate(album.ReleaseDate, album.ReleaseDatePrecision)
+                        ReleaseDate = ParseSpotifyDate(album.ReleaseDate, album.ReleaseDatePrecision),
+                        TrackTitle = playlistTrack.Track.Name
                     };
                 }
             }

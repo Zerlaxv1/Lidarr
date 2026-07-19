@@ -36,9 +36,10 @@ namespace NzbDrone.Core.Music
         {
             var addOptions = artist.AddOptions;
 
+            _albumAddedService.SearchForRecentlyAdded(artist.Id);
+
             if (addOptions == null)
             {
-                _albumAddedService.SearchForRecentlyAdded(artist.Id);
                 return;
             }
 

@@ -24,6 +24,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly ISearchForNewArtist _artistSearchService;
         private readonly IArtistService _artistService;
         private readonly IAlbumService _albumService;
+        private readonly ITrackService _trackService;
         private readonly IAddArtistService _addArtistService;
         private readonly IAddAlbumService _addAlbumService;
         private readonly IEventAggregator _eventAggregator;
@@ -37,6 +38,7 @@ namespace NzbDrone.Core.ImportLists
                                      ISearchForNewArtist artistSearchService,
                                      IArtistService artistService,
                                      IAlbumService albumService,
+                                     ITrackService trackService,
                                      IAddArtistService addArtistService,
                                      IAddAlbumService addAlbumService,
                                      IEventAggregator eventAggregator,
@@ -50,6 +52,7 @@ namespace NzbDrone.Core.ImportLists
             _artistSearchService = artistSearchService;
             _artistService = artistService;
             _albumService = albumService;
+            _trackService = trackService;
             _addArtistService = addArtistService;
             _addAlbumService = addAlbumService;
             _eventAggregator = eventAggregator;
@@ -87,6 +90,7 @@ namespace NzbDrone.Core.ImportLists
             var processed = new List<Album>();
             var artistsToAdd = new List<Artist>();
             var albumsToAdd = new List<Album>();
+            var existingAlbumTrackTitles = new Dictionary<int, List<string>>();
 
             if (items.Count == 0)
             {
@@ -115,7 +119,7 @@ namespace NzbDrone.Core.ImportLists
                         MapAlbumReport(item);
                     }
 
-                    ProcessAlbumReport(importList, item, listExclusions, albumsToAdd, artistsToAdd);
+                    ProcessAlbumReport(importList, item, listExclusions, albumsToAdd, artistsToAdd, existingAlbumTrackTitles);
                 }
                 else if (item.Artist.IsNotNullOrWhiteSpace() || item.ArtistMusicBrainzId.IsNotNullOrWhiteSpace())
                 {
@@ -130,6 +134,16 @@ namespace NzbDrone.Core.ImportLists
 
             var addedArtists = _addArtistService.AddArtists(artistsToAdd, false, true);
             var addedAlbums = _addAlbumService.AddAlbums(albumsToAdd, false, true);
+
+            foreach (var kvp in existingAlbumTrackTitles)
+            {
+                var matched = _trackService.SetMonitoredByTitle(kvp.Key, kvp.Value);
+
+                if (matched.Empty())
+                {
+                    _logger.Warn("Song-mode track monitoring for album [{0}] matched no tracks for titles: {1}", kvp.Key, string.Join(", ", kvp.Value));
+                }
+            }
 
             var message = string.Format($"Import List Sync Completed. Items found: {items.Count}, Artists added: {addedArtists.Count}, Albums added: {addedAlbums.Count}");
 
@@ -161,7 +175,7 @@ namespace NzbDrone.Core.ImportLists
             report.ArtistMusicBrainzId ??= mappedAlbum.ArtistMetadata?.Value?.ForeignArtistId;
         }
 
-        private void ProcessAlbumReport(ImportListDefinition importList, ImportListItemInfo report, Dictionary<string, ImportListExclusion> listExclusions, List<Album> albumsToAdd, List<Artist> artistsToAdd)
+        private void ProcessAlbumReport(ImportListDefinition importList, ImportListItemInfo report, Dictionary<string, ImportListExclusion> listExclusions, List<Album> albumsToAdd, List<Artist> artistsToAdd, Dictionary<int, List<string>> existingAlbumTrackTitles)
         {
             if (report.AlbumMusicBrainzId.IsNullOrWhiteSpace() || report.ArtistMusicBrainzId.IsNullOrWhiteSpace())
             {
@@ -189,11 +203,24 @@ namespace NzbDrone.Core.ImportLists
                 _logger.Debug("{0} [{1}] Rejected, Album Exists in DB.  Ensuring Album and Artist monitored.", report.AlbumMusicBrainzId, report.Album);
 
                 ProcessAlbumReportForExistingAlbum(importList, existingAlbum);
+
+                if (report.TrackTitle.IsNotNullOrWhiteSpace() && importList.ShouldMonitorExisting && importList.ShouldMonitor != ImportListMonitorType.None)
+                {
+                    if (!existingAlbumTrackTitles.TryGetValue(existingAlbum.Id, out var titles))
+                    {
+                        titles = new List<string>();
+                        existingAlbumTrackTitles[existingAlbum.Id] = titles;
+                    }
+
+                    titles.Add(report.TrackTitle);
+                }
+
                 return;
             }
 
             // Append Album if not already in DB or already on add list
-            if (albumsToAdd.All(s => s.ForeignAlbumId != report.AlbumMusicBrainzId))
+            var existingToAdd = albumsToAdd.FirstOrDefault(s => s.ForeignAlbumId == report.AlbumMusicBrainzId);
+            if (existingToAdd == null)
             {
                 var monitored = importList.ShouldMonitor != ImportListMonitorType.None;
 
@@ -217,7 +244,16 @@ namespace NzbDrone.Core.ImportLists
                     toAddArtist.AddOptions.AlbumsToMonitor.Add(toAdd.ForeignAlbumId);
                 }
 
+                if (report.TrackTitle.IsNotNullOrWhiteSpace())
+                {
+                    toAdd.AddOptions.MonitorTrackTitles.Add(report.TrackTitle);
+                }
+
                 albumsToAdd.Add(toAdd);
+            }
+            else if (report.TrackTitle.IsNotNullOrWhiteSpace())
+            {
+                existingToAdd.AddOptions.MonitorTrackTitles.Add(report.TrackTitle);
             }
         }
 
