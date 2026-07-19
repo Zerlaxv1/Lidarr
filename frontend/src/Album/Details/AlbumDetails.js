@@ -587,6 +587,7 @@ class AlbumDetails extends Component {
                           key={medium.mediumNumber}
                           albumId={id}
                           albumMonitored={monitored}
+                          artistMonitored={artist.monitored}
                           albumReleaseDate={releaseDate}
                           {...medium}
                           isExpanded={expandedState[medium.mediumNumber]}

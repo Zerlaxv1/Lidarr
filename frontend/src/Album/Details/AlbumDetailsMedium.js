@@ -95,6 +95,7 @@ class AlbumDetailsMedium extends Component {
       mediumNumber,
       mediumFormat,
       albumMonitored,
+      artistMonitored,
       albumReleaseDate,
       items,
       columns,
@@ -169,6 +170,8 @@ class AlbumDetailsMedium extends Component {
                               <TrackRowConnector
                                 key={item.id}
                                 columns={columns}
+                                albumMonitored={albumMonitored}
+                                artistMonitored={artistMonitored}
                                 {...item}
                               />
                             );
@@ -200,6 +203,7 @@ class AlbumDetailsMedium extends Component {
 AlbumDetailsMedium.propTypes = {
   albumId: PropTypes.number.isRequired,
   albumMonitored: PropTypes.bool.isRequired,
+  artistMonitored: PropTypes.bool.isRequired,
   albumReleaseDate: PropTypes.string,
   mediumNumber: PropTypes.number.isRequired,
   mediumFormat: PropTypes.string.isRequired,

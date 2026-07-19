@@ -57,6 +57,7 @@ class AlbumDetailsMediumConnector extends Component {
 AlbumDetailsMediumConnector.propTypes = {
   albumId: PropTypes.number.isRequired,
   albumMonitored: PropTypes.bool.isRequired,
+  artistMonitored: PropTypes.bool.isRequired,
   albumReleaseDate: PropTypes.string,
   mediumNumber: PropTypes.number.isRequired,
   setTracksTableOption: PropTypes.func.isRequired,

@@ -19,6 +19,18 @@ import translate from 'Utilities/String/translate';
 import TrackActionsCell from './TrackActionsCell';
 import styles from './TrackRow.css';
 
+function getMonitorTooltip(monitored, albumMonitored, artistMonitored) {
+  if (!artistMonitored) {
+    return 'Cannot toggle monitored state when artist is unmonitored';
+  }
+
+  if (!albumMonitored) {
+    return 'Cannot toggle monitored state when album is unmonitored';
+  }
+
+  return monitored ? 'Monitored, click to unmonitor' : 'Unmonitored, click to monitor';
+}
+
 class TrackRow extends Component {
 
   //
@@ -36,6 +48,8 @@ class TrackRow extends Component {
     const {
       id,
       albumId,
+      albumMonitored,
+      artistMonitored,
       mediumNumber,
       trackFileId,
       absoluteTrackNumber,
@@ -72,6 +86,8 @@ class TrackRow extends Component {
                 >
                   <MonitorToggleButton
                     monitored={this.props.monitored}
+                    isDisabled={!albumMonitored || !artistMonitored}
+                    title={getMonitorTooltip(this.props.monitored, albumMonitored, artistMonitored)}
                     isSaving={this.props.isSaving}
                     onPress={this.onMonitoredPress}
                   />
@@ -246,6 +262,8 @@ TrackRow.propTypes = {
   deleteTrackFile: PropTypes.func.isRequired,
   id: PropTypes.number.isRequired,
   albumId: PropTypes.number.isRequired,
+  albumMonitored: PropTypes.bool.isRequired,
+  artistMonitored: PropTypes.bool.isRequired,
   monitored: PropTypes.bool.isRequired,
   onMonitoredPress: PropTypes.func.isRequired,
   trackFileId: PropTypes.number,
