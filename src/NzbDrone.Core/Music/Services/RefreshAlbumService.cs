@@ -297,6 +297,8 @@ namespace NzbDrone.Core.Music
             }
 
             var toMonitor = monitored.OrderByDescending(x => _mediaFileService.GetFilesByRelease(x.Id).Count)
+                .ThenByDescending(x => x.Media.Any(m => m.Format != null && m.Format.Equals("Digital Media", StringComparison.OrdinalIgnoreCase)))
+                .ThenByDescending(x => x.Country.Any(c => c.Equals("[Worldwide]", StringComparison.OrdinalIgnoreCase)))
                 .ThenByDescending(x => x.TrackCount)
                 .First();
 
