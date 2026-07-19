@@ -444,5 +444,57 @@ namespace NzbDrone.Core.Test.MusicTests
                                                  It.IsAny<bool>(),
                                                  It.IsAny<bool>()));
         }
+
+        [Test]
+        public void should_prefer_worldwide_release_when_format_tied()
+        {
+            var newAlbum = Builder<Album>.CreateNew()
+                .With(x => x.ArtistMetadata = Builder<ArtistMetadata>.CreateNew().Build())
+                .Build();
+
+            // this is required because RefreshAlbumInfo will edit the album passed in
+            var albumCopy = Builder<Album>.CreateNew()
+                .With(x => x.ArtistMetadata = Builder<ArtistMetadata>.CreateNew().Build())
+                .Build();
+
+            // Both releases are CD (neither Digital Media) and tie on files and track count.
+            // The loser has a null Country (possible after SkyHook mapping) to prove the null guard.
+            var releases = Builder<AlbumRelease>.CreateListOfSize(2)
+                .All()
+                .With(x => x.AlbumId = newAlbum.Id)
+                .With(x => x.Monitored = true)
+                .With(x => x.TrackCount = 10)
+                .TheFirst(1)
+                .With(x => x.ForeignReleaseId = "JapanRelease")
+                .With(x => x.Media = new List<Medium> { new Medium { Number = 1, Format = "CD" } })
+                .With(x => x.Country = null)
+                .TheLast(1)
+                .With(x => x.ForeignReleaseId = "WorldwideRelease")
+                .With(x => x.Media = new List<Medium> { new Medium { Number = 1, Format = "CD" } })
+                .With(x => x.Country = new List<string> { "[Worldwide]" })
+                .Build() as List<AlbumRelease>;
+
+            newAlbum.AlbumReleases = releases;
+            albumCopy.AlbumReleases = releases;
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(x => x.GetReleasesForRefresh(It.IsAny<int>(), It.IsAny<List<string>>()))
+                .Returns(new List<AlbumRelease>());
+
+            Mocker.GetMock<IProvideAlbumInfo>()
+                .Setup(x => x.GetAlbumInfo(It.IsAny<string>()))
+                .Returns(Tuple.Create("dummy string", albumCopy, new List<ArtistMetadata>()));
+
+            Subject.RefreshAlbumInfo(newAlbum, null, false);
+
+            Mocker.GetMock<IRefreshAlbumReleaseService>()
+                .Verify(x => x.RefreshEntityInfo(It.Is<List<AlbumRelease>>(
+                                                     l => l.Count == 2 &&
+                                                     l.Count(y => y.Monitored) == 1 &&
+                                                     l.Single(y => y.Monitored).ForeignReleaseId == "WorldwideRelease"),
+                                                 It.IsAny<List<AlbumRelease>>(),
+                                                 It.IsAny<bool>(),
+                                                 It.IsAny<bool>()));
+        }
     }
 }
