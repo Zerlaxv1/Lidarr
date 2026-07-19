@@ -636,5 +636,65 @@ namespace NzbDrone.Core.Test.ImportListTests
             Mocker.GetMock<IAddAlbumService>()
                 .Verify(v => v.AddAlbums(It.Is<List<Album>>(t => t.Count == 1 && t.First().Monitored == true), false, true));
         }
+
+        [Test]
+        public void should_search_matched_track_for_existing_album_when_should_search()
+        {
+            WithAlbumId();
+            WithArtistId();
+            WithExistingAlbum(true);
+            _importListReports.First().TrackTitle = "Track Two";
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, true, true);
+
+            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Returns(new List<Track> { matchedTrack });
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(v => v.Push<Command>(It.Is<TrackSearchCommand>(x => x.TrackIds.Single() == 55), CommandPriority.Normal, CommandTrigger.Unspecified));
+        }
+
+        [Test]
+        public void should_not_search_matched_track_for_existing_album_when_should_search_is_false()
+        {
+            WithAlbumId();
+            WithArtistId();
+            WithExistingAlbum(true);
+            _importListReports.First().TrackTitle = "Track Two";
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, true, false);
+
+            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Returns(new List<Track> { matchedTrack });
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(v => v.Push<Command>(It.IsAny<TrackSearchCommand>(), CommandPriority.Normal, CommandTrigger.Unspecified), Times.Never);
+        }
+
+        [Test]
+        public void should_flag_new_song_mode_album_for_search_regardless_of_new_artist()
+        {
+            WithArtistId();
+            WithAlbumId();
+            WithAlbum();
+            _importListReports.First().TrackTitle = "Track One";
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, false, true);
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddAlbumService>()
+                .Verify(v => v.AddAlbums(It.Is<List<Album>>(t => t.Count == 1 && t.First().AddOptions.SearchForNewAlbum == true), false, true));
+        }
     }
 }

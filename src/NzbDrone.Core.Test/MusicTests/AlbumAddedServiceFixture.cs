@@ -4,8 +4,12 @@ using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.IndexerSearch;
+using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Music;
 using NzbDrone.Core.Test.Framework;
+
+using It = Moq.It;
 
 namespace NzbDrone.Core.Test.MusicTests
 {
@@ -84,6 +88,52 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<ITrackService>()
                 .Verify(s => s.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>()), Times.Never());
+        }
+
+        [Test]
+        public void should_search_matched_tracks_when_search_for_new_album_flag_set()
+        {
+            var songModeAlbum = Builder<Album>.CreateNew()
+                .With(a => a.Id = 10)
+                .With(a => a.AddOptions = new AddAlbumOptions { MonitorTrackTitles = new List<string> { "Track One" }, SearchForNewAlbum = true })
+                .Build();
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(s => s.GetAlbumsByArtist(5))
+                .Returns(new List<Album> { songModeAlbum });
+
+            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 99).Build();
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Returns(new List<Track> { matchedTrack });
+
+            Subject.SearchForRecentlyAdded(5);
+
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(s => s.Push(It.Is<TrackSearchCommand>(c => c.TrackIds.Count == 1 && c.TrackIds.Contains(99)), CommandPriority.Normal, CommandTrigger.Unspecified), Times.Once);
+        }
+
+        [Test]
+        public void should_not_double_search_song_mode_album_via_whole_album_search()
+        {
+            var songModeAlbum = Builder<Album>.CreateNew()
+                .With(a => a.Id = 10)
+                .With(a => a.AddOptions = new AddAlbumOptions { MonitorTrackTitles = new List<string> { "Track One" }, SearchForNewAlbum = true })
+                .Build();
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(s => s.GetAlbumsByArtist(5))
+                .Returns(new List<Album> { songModeAlbum });
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Returns(new List<Track> { Builder<Track>.CreateNew().With(t => t.Id = 99).Build() });
+
+            Subject.SearchForRecentlyAdded(5);
+
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(s => s.Push(It.IsAny<AlbumSearchCommand>(), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Never);
         }
     }
 }

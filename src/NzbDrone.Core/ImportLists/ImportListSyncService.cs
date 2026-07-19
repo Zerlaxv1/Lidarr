@@ -91,6 +91,7 @@ namespace NzbDrone.Core.ImportLists
             var artistsToAdd = new List<Artist>();
             var albumsToAdd = new List<Album>();
             var existingAlbumTrackTitles = new Dictionary<int, List<string>>();
+            var existingAlbumsToSearch = new HashSet<int>();
 
             if (items.Count == 0)
             {
@@ -119,7 +120,7 @@ namespace NzbDrone.Core.ImportLists
                         MapAlbumReport(item);
                     }
 
-                    ProcessAlbumReport(importList, item, listExclusions, albumsToAdd, artistsToAdd, existingAlbumTrackTitles);
+                    ProcessAlbumReport(importList, item, listExclusions, albumsToAdd, artistsToAdd, existingAlbumTrackTitles, existingAlbumsToSearch);
                 }
                 else if (item.Artist.IsNotNullOrWhiteSpace() || item.ArtistMusicBrainzId.IsNotNullOrWhiteSpace())
                 {
@@ -135,6 +136,8 @@ namespace NzbDrone.Core.ImportLists
             var addedArtists = _addArtistService.AddArtists(artistsToAdd, false, true);
             var addedAlbums = _addAlbumService.AddAlbums(albumsToAdd, false, true);
 
+            var tracksToSearch = new List<int>();
+
             foreach (var kvp in existingAlbumTrackTitles)
             {
                 var matched = _trackService.SetMonitoredByTitle(kvp.Key, kvp.Value);
@@ -143,6 +146,15 @@ namespace NzbDrone.Core.ImportLists
                 {
                     _logger.Warn("Song-mode track monitoring for album [{0}] matched no tracks for titles: {1}", kvp.Key, string.Join(", ", kvp.Value));
                 }
+                else if (existingAlbumsToSearch.Contains(kvp.Key))
+                {
+                    tracksToSearch.AddRange(matched.Select(t => t.Id));
+                }
+            }
+
+            if (tracksToSearch.Any())
+            {
+                _commandQueueManager.Push(new TrackSearchCommand(tracksToSearch));
             }
 
             var message = string.Format($"Import List Sync Completed. Items found: {items.Count}, Artists added: {addedArtists.Count}, Albums added: {addedAlbums.Count}");
@@ -175,7 +187,7 @@ namespace NzbDrone.Core.ImportLists
             report.ArtistMusicBrainzId ??= mappedAlbum.ArtistMetadata?.Value?.ForeignArtistId;
         }
 
-        private void ProcessAlbumReport(ImportListDefinition importList, ImportListItemInfo report, Dictionary<string, ImportListExclusion> listExclusions, List<Album> albumsToAdd, List<Artist> artistsToAdd, Dictionary<int, List<string>> existingAlbumTrackTitles)
+        private void ProcessAlbumReport(ImportListDefinition importList, ImportListItemInfo report, Dictionary<string, ImportListExclusion> listExclusions, List<Album> albumsToAdd, List<Artist> artistsToAdd, Dictionary<int, List<string>> existingAlbumTrackTitles, HashSet<int> existingAlbumsToSearch)
         {
             if (report.AlbumMusicBrainzId.IsNullOrWhiteSpace() || report.ArtistMusicBrainzId.IsNullOrWhiteSpace())
             {
@@ -213,6 +225,11 @@ namespace NzbDrone.Core.ImportLists
                     }
 
                     titles.Add(report.TrackTitle);
+
+                    if (importList.ShouldSearch)
+                    {
+                        existingAlbumsToSearch.Add(existingAlbum.Id);
+                    }
                 }
 
                 return;
@@ -247,6 +264,11 @@ namespace NzbDrone.Core.ImportLists
                 if (report.TrackTitle.IsNotNullOrWhiteSpace())
                 {
                     toAdd.AddOptions.MonitorTrackTitles.Add(report.TrackTitle);
+
+                    // Song mode always resolves search at track granularity via
+                    // ApplyPendingTrackMonitoring, so it is not gated on the artist
+                    // already existing the way the whole-album SearchForNewAlbum is.
+                    toAdd.AddOptions.SearchForNewAlbum = importList.ShouldSearch;
                 }
 
                 albumsToAdd.Add(toAdd);
@@ -254,6 +276,7 @@ namespace NzbDrone.Core.ImportLists
             else if (report.TrackTitle.IsNotNullOrWhiteSpace())
             {
                 existingToAdd.AddOptions.MonitorTrackTitles.Add(report.TrackTitle);
+                existingToAdd.AddOptions.SearchForNewAlbum = existingToAdd.AddOptions.SearchForNewAlbum || importList.ShouldSearch;
             }
         }
 

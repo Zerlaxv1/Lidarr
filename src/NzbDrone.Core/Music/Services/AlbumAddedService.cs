@@ -40,7 +40,8 @@ namespace NzbDrone.Core.Music
         public void SearchForRecentlyAdded(int artistId)
         {
             var allAlbums = _albumService.GetAlbumsByArtist(artistId);
-            var toSearch = allAlbums.Where(x => x.AddOptions.SearchForNewAlbum).ToList();
+            var songModeAlbums = allAlbums.Where(x => x.AddOptions.MonitorTrackTitles.Any()).ToList();
+            var toSearch = allAlbums.Except(songModeAlbums).Where(x => x.AddOptions.SearchForNewAlbum).ToList();
 
             if (toSearch.Any())
             {
@@ -54,7 +55,7 @@ namespace NzbDrone.Core.Music
             if (recentlyAddedIds != null)
             {
                 _logger.Trace("Found and monitored {0} albums by artist [{1}] during metadata refresh.", recentlyAddedIds.Count, artistId);
-                toSearch.AddRange(allAlbums.Where(x => recentlyAddedIds.Contains(x.Id)));
+                toSearch.AddRange(allAlbums.Except(songModeAlbums).Where(x => recentlyAddedIds.Contains(x.Id)));
             }
 
             if (toSearch.Any())
@@ -65,7 +66,6 @@ namespace NzbDrone.Core.Music
 
             _addedAlbumsCache.Remove(artistId.ToString());
 
-            var songModeAlbums = allAlbums.Where(x => x.AddOptions.MonitorTrackTitles.Any()).ToList();
             ApplyPendingTrackMonitoring(songModeAlbums);
         }
 
@@ -75,6 +75,8 @@ namespace NzbDrone.Core.Music
             {
                 return;
             }
+
+            var tracksToSearch = new List<int>();
 
             foreach (var album in albums)
             {
@@ -91,11 +93,21 @@ namespace NzbDrone.Core.Music
                 {
                     _logger.Warn("Song-mode track monitoring for album [{0}] matched no tracks for titles: {1}", album.Id, string.Join(", ", titles));
                 }
+                else if (album.AddOptions.SearchForNewAlbum)
+                {
+                    tracksToSearch.AddRange(matched.Select(t => t.Id));
+                }
 
+                album.AddOptions.SearchForNewAlbum = false;
                 titles.Clear();
             }
 
             _albumService.SetAddOptions(albums);
+
+            if (tracksToSearch.Any())
+            {
+                _commandQueueManager.Push(new TrackSearchCommand(tracksToSearch));
+            }
         }
 
         public void Handle(AlbumInfoRefreshedEvent message)
