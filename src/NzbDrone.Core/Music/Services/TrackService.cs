@@ -151,16 +151,21 @@ namespace NzbDrone.Core.Music
                 .ToLookup(t => t.ForeignRecordingId);
 
             var changed = new List<Track>();
+            var consumed = new HashSet<int>();
 
             foreach (var newTrack in newTracks)
             {
-                var match = byRecording[newTrack.ForeignRecordingId].FirstOrDefault();
+                var match = byRecording[newTrack.ForeignRecordingId].FirstOrDefault(t => !consumed.Contains(t.Id));
 
                 // Fallback when recording ids don't line up (e.g. different medium layout):
                 // a normalized-title match is safer than absolute track number here, since
                 // absolute track number does not survive a medium-count change (e.g. a
                 // 2x-vinyl 20-track release vs. a single-disc 13-track digital release).
+                // Each old track may only be consumed once so duplicate titles (e.g. two
+                // "Interlude" tracks) pair up with distinct files instead of both new
+                // tracks grabbing the same old track's file.
                 match ??= oldTracks.FirstOrDefault(t =>
+                    !consumed.Contains(t.Id) &&
                     t.Title.CleanTrackTitle().Equals(newTrack.Title.CleanTrackTitle(), StringComparison.OrdinalIgnoreCase));
 
                 if (match == null)
@@ -168,6 +173,7 @@ namespace NzbDrone.Core.Music
                     continue;
                 }
 
+                consumed.Add(match.Id);
                 newTrack.TrackFileId = match.TrackFileId;
                 newTrack.Monitored = match.Monitored;
                 changed.Add(newTrack);

@@ -108,6 +108,40 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_relink_duplicate_titles_to_distinct_files()
+        {
+            var oldRelease = new AlbumRelease { Id = 1 };
+            var newRelease = new AlbumRelease { Id = 2 };
+
+            var oldTracks = new List<Track>
+            {
+                new Track { Id = 10, AlbumReleaseId = 1, ForeignRecordingId = "old-rec-1", Title = "Interlude", TrackFileId = 11, Monitored = true },
+                new Track { Id = 11, AlbumReleaseId = 1, ForeignRecordingId = "old-rec-2", Title = "Interlude", TrackFileId = 22, Monitored = true }
+            };
+
+            var newTracks = new List<Track>
+            {
+                new Track { Id = 20, AlbumReleaseId = 2, ForeignRecordingId = "new-rec-1", Title = "Interlude", TrackFileId = 0, Monitored = true },
+                new Track { Id = 21, AlbumReleaseId = 2, ForeignRecordingId = "new-rec-2", Title = "Interlude", TrackFileId = 0, Monitored = true }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByRelease(1))
+                .Returns(oldTracks);
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByRelease(2))
+                .Returns(newTracks);
+
+            var result = Subject.RelinkTrackFilesToRelease(newRelease, new List<AlbumRelease> { oldRelease });
+
+            result.Should().HaveCount(2);
+            result.Single(t => t.Id == 20).TrackFileId.Should().Be(11);
+            result.Single(t => t.Id == 21).TrackFileId.Should().Be(22);
+            result.Select(t => t.TrackFileId).Should().OnlyHaveUniqueItems();
+        }
+
+        [Test]
         public void should_not_match_tracks_that_have_no_file_and_are_unmonitored()
         {
             var oldRelease = new AlbumRelease { Id = 1 };
