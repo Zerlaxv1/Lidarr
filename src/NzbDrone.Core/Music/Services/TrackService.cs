@@ -226,6 +226,18 @@ namespace NzbDrone.Core.Music
             return NzbDrone.Core.Parser.Parser.NormalizeTitle(title).Replace(" ", string.Empty);
         }
 
+        // Song-mode search gating filter: both import paths (ImportListSyncService's
+        // immediate handling of existing albums and AlbumAddedService's deferred handling
+        // of newly-added albums) must funnel through this so a track is only ever searched
+        // when its own title came from a search-enabled list, not merely because some other
+        // list touching the same album happened to also monitor it.
+        public static List<int> GetTrackIdsMatchingTitles(List<Track> tracks, List<string> titles)
+        {
+            var normalizedTitles = new HashSet<string>(titles.Select(NormalizeTrackTitleForMatch));
+
+            return tracks.Where(t => normalizedTitles.Contains(NormalizeTrackTitleForMatch(t.Title))).Select(t => t.Id).ToList();
+        }
+
         public void Handle(ReleaseDeletedEvent message)
         {
             var tracks = GetTracksByRelease(message.Release.Id);

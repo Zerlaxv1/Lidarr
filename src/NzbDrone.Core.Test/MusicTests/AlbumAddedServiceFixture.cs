@@ -9,8 +9,6 @@ using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Music;
 using NzbDrone.Core.Test.Framework;
 
-using It = Moq.It;
-
 namespace NzbDrone.Core.Test.MusicTests
 {
     [TestFixture]
@@ -158,6 +156,34 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IManageCommandQueue>()
                 .Verify(s => s.Push(It.IsAny<TrackSearchCommand>(), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Never);
+        }
+
+        [Test]
+        public void should_search_only_tracks_whose_titles_came_from_search_enabled_lists()
+        {
+            var songModeAlbum = Builder<Album>.CreateNew()
+                .With(a => a.Id = 10)
+                .With(a => a.AddOptions = new AddAlbumOptions { MonitorTrackTitles = new List<string> { "Song From List A", "Song From List B" }, SearchTrackTitles = new List<string> { "Song From List A" } })
+                .Build();
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(s => s.GetAlbumsByArtist(5))
+                .Returns(new List<Album> { songModeAlbum });
+
+            var trackA = Builder<Track>.CreateNew().With(t => t.Id = 100).With(t => t.Title = "Song From List A").Build();
+            var trackB = Builder<Track>.CreateNew().With(t => t.Id = 101).With(t => t.Title = "Song From List B").Build();
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Returns(new List<Track> { trackA, trackB });
+
+            Subject.SearchForRecentlyAdded(5);
+
+            // Only the track whose title came from the search-enabled list (Song From List A)
+            // should be in the search command; Song From List B was merely monitored, not
+            // requested for search, and must not leak into the same TrackSearchCommand.
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(s => s.Push(It.Is<TrackSearchCommand>(c => c.TrackIds.Count == 1 && c.TrackIds.Contains(100) && !c.TrackIds.Contains(101)), CommandPriority.Normal, CommandTrigger.Unspecified), Times.Once);
         }
     }
 }

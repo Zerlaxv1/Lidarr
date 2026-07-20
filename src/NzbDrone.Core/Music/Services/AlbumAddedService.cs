@@ -96,9 +96,7 @@ namespace NzbDrone.Core.Music
                 }
                 else if (searchTitles.Any())
                 {
-                    var normalizedSearchTitles = new HashSet<string>(searchTitles.Select(TrackService.NormalizeTrackTitleForMatch));
-                    var tracksMatchingSearchTitles = matched.Where(t => normalizedSearchTitles.Contains(TrackService.NormalizeTrackTitleForMatch(t.Title))).ToList();
-                    tracksToSearch.AddRange(tracksMatchingSearchTitles.Select(t => t.Id));
+                    tracksToSearch.AddRange(TrackService.GetTrackIdsMatchingTitles(matched, searchTitles));
                 }
 
                 album.AddOptions.SearchForNewAlbum = false;
