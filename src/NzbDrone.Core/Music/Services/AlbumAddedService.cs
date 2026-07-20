@@ -81,6 +81,7 @@ namespace NzbDrone.Core.Music
             foreach (var album in albums)
             {
                 var titles = album.AddOptions.MonitorTrackTitles;
+                var searchTitles = album.AddOptions.SearchTrackTitles;
                 _logger.Debug("Applying song-mode track monitoring for album [{0}], {1} title(s)", album.Id, titles.Count);
 
                 // Snapshot into a new list: titles is the live AddOptions.MonitorTrackTitles
@@ -93,13 +94,16 @@ namespace NzbDrone.Core.Music
                 {
                     _logger.Warn("Song-mode track monitoring for album [{0}] matched no tracks for titles: {1}", album.Id, string.Join(", ", titles));
                 }
-                else if (album.AddOptions.SearchForNewAlbum)
+                else if (searchTitles.Any())
                 {
-                    tracksToSearch.AddRange(matched.Select(t => t.Id));
+                    var normalizedSearchTitles = new HashSet<string>(searchTitles.Select(TrackService.NormalizeTrackTitleForMatch));
+                    var tracksMatchingSearchTitles = matched.Where(t => normalizedSearchTitles.Contains(TrackService.NormalizeTrackTitleForMatch(t.Title))).ToList();
+                    tracksToSearch.AddRange(tracksMatchingSearchTitles.Select(t => t.Id));
                 }
 
                 album.AddOptions.SearchForNewAlbum = false;
                 titles.Clear();
+                searchTitles.Clear();
             }
 
             _albumService.SetAddOptions(albums);

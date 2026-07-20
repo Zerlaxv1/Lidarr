@@ -95,14 +95,14 @@ namespace NzbDrone.Core.Test.MusicTests
         {
             var songModeAlbum = Builder<Album>.CreateNew()
                 .With(a => a.Id = 10)
-                .With(a => a.AddOptions = new AddAlbumOptions { MonitorTrackTitles = new List<string> { "Track One" }, SearchForNewAlbum = true })
+                .With(a => a.AddOptions = new AddAlbumOptions { MonitorTrackTitles = new List<string> { "Track One" }, SearchTrackTitles = new List<string> { "Track One" }, SearchForNewAlbum = true })
                 .Build();
 
             Mocker.GetMock<IAlbumService>()
                 .Setup(s => s.GetAlbumsByArtist(5))
                 .Returns(new List<Album> { songModeAlbum });
 
-            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 99).Build();
+            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 99).With(t => t.Title = "Track One").Build();
 
             Mocker.GetMock<ITrackService>()
                 .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
@@ -134,6 +134,30 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IManageCommandQueue>()
                 .Verify(s => s.Push(It.IsAny<AlbumSearchCommand>(), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Never);
+        }
+
+        [Test]
+        public void should_not_search_when_monitor_track_titles_populated_but_search_track_titles_empty()
+        {
+            var songModeAlbum = Builder<Album>.CreateNew()
+                .With(a => a.Id = 10)
+                .With(a => a.AddOptions = new AddAlbumOptions { MonitorTrackTitles = new List<string> { "Track One" }, SearchTrackTitles = new List<string>() })
+                .Build();
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(s => s.GetAlbumsByArtist(5))
+                .Returns(new List<Album> { songModeAlbum });
+
+            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 99).Build();
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Returns(new List<Track> { matchedTrack });
+
+            Subject.SearchForRecentlyAdded(5);
+
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(s => s.Push(It.IsAny<TrackSearchCommand>(), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Never);
         }
     }
 }

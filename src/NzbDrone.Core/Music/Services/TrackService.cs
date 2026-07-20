@@ -221,7 +221,7 @@ namespace NzbDrone.Core.Music
         // "byob" - not equal. Stripping the remaining spaces makes title matching fully
         // punctuation-insensitive, which is what song-mode needs when comparing an
         // import list's track title against the locally stored (MusicBrainz-sourced) one.
-        private static string NormalizeTrackTitleForMatch(string title)
+        public static string NormalizeTrackTitleForMatch(string title)
         {
             return NzbDrone.Core.Parser.Parser.NormalizeTitle(title).Replace(" ", string.Empty);
         }

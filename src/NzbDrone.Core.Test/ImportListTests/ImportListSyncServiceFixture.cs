@@ -647,7 +647,7 @@ namespace NzbDrone.Core.Test.ImportListTests
 
             WithListSettings(ImportListMonitorType.SpecificAlbum, true, true);
 
-            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
+            var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).With(t => t.Title = "Track Two").Build();
 
             Mocker.GetMock<ITrackService>()
                 .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
@@ -695,6 +695,51 @@ namespace NzbDrone.Core.Test.ImportListTests
 
             Mocker.GetMock<IAddAlbumService>()
                 .Verify(v => v.AddAlbums(It.Is<List<Album>>(t => t.Count == 1 && t.First().AddOptions.SearchForNewAlbum == true), false, true));
+        }
+
+        [Test]
+        public void should_search_only_tracks_from_lists_with_should_search_when_multiple_lists_touch_same_album()
+        {
+            WithAlbumId();
+            WithArtistId();
+            WithExistingAlbum(true);
+
+            // List A: ShouldSearch=true with "Song From List A"
+            var listA = new ImportListDefinition { Id = 1, ShouldMonitor = ImportListMonitorType.SpecificAlbum, ShouldMonitorExisting = true, ShouldSearch = true };
+            var item1 = _importListReports.First();
+            item1.ImportListId = 1;
+            item1.TrackTitle = "Song From List A";
+
+            // List B: ShouldSearch=false with "Song From List B"
+            var item2 = new ImportListItemInfo
+            {
+                Artist = "Test Artist",
+                ArtistMusicBrainzId = _importListReports.First().ArtistMusicBrainzId,
+                Album = _importListReports.First().Album,
+                AlbumMusicBrainzId = _importListReports.First().AlbumMusicBrainzId,
+                ImportListId = 2,
+                TrackTitle = "Song From List B"
+            };
+            _importListReports.Add(item2);
+
+            var listB = new ImportListDefinition { Id = 2, ShouldMonitor = ImportListMonitorType.SpecificAlbum, ShouldMonitorExisting = true, ShouldSearch = false };
+
+            Mocker.GetMock<IImportListFactory>()
+                .Setup(v => v.All())
+                .Returns(new List<ImportListDefinition> { listA, listB });
+
+            var trackA = Builder<Track>.CreateNew().With(t => t.Id = 100).With(t => t.Title = "Song From List A").Build();
+            var trackB = Builder<Track>.CreateNew().With(t => t.Id = 101).With(t => t.Title = "Song From List B").Build();
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Returns(new List<Track> { trackA, trackB });
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            // Only the track from List A (with ShouldSearch=true) should be in the search command
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(v => v.Push<Command>(It.Is<TrackSearchCommand>(x => x.TrackIds.Count == 1 && x.TrackIds.Contains(100) && !x.TrackIds.Contains(101)), CommandPriority.Normal, CommandTrigger.Unspecified));
         }
     }
 }
