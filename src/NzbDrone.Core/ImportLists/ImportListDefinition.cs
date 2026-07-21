@@ -26,6 +26,7 @@ namespace NzbDrone.Core.ImportLists
     {
         None,
         SpecificAlbum,
-        EntireArtist
+        EntireArtist,
+        SpecificTrack
     }
 }

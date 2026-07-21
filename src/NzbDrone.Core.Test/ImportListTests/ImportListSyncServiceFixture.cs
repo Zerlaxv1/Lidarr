@@ -570,7 +570,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithExistingAlbum(true);
             _importListReports.First().TrackTitle = "Track Two";
 
-            WithListSettings(ImportListMonitorType.SpecificAlbum, true, false);
+            WithListSettings(ImportListMonitorType.SpecificTrack, true, false);
 
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
 
@@ -592,7 +592,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithExistingAlbum(true);
             _importListReports.First().TrackTitle = "Track Two";
 
-            WithListSettings(ImportListMonitorType.SpecificAlbum, false, false);
+            WithListSettings(ImportListMonitorType.SpecificTrack, false, false);
 
             Subject.Execute(new ImportListSyncCommand());
 
@@ -609,7 +609,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             _importListReports.First().TrackTitle = "Track One";
             WithSameAlbumSecondTrack("Track Two");
 
-            WithListSettings(ImportListMonitorType.SpecificAlbum, false, false);
+            WithListSettings(ImportListMonitorType.SpecificTrack, false, false);
 
             Subject.Execute(new ImportListSyncCommand());
 
@@ -629,7 +629,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithAlbum();
             _importListReports.First().TrackTitle = "Track One";
 
-            WithListSettings(ImportListMonitorType.SpecificAlbum, false, false);
+            WithListSettings(ImportListMonitorType.SpecificTrack, false, false);
 
             Subject.Execute(new ImportListSyncCommand());
 
@@ -645,7 +645,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithExistingAlbum(true);
             _importListReports.First().TrackTitle = "Track Two";
 
-            WithListSettings(ImportListMonitorType.SpecificAlbum, true, true);
+            WithListSettings(ImportListMonitorType.SpecificTrack, true, true);
 
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).With(t => t.Title = "Track Two").Build();
 
@@ -667,7 +667,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithExistingAlbum(true);
             _importListReports.First().TrackTitle = "Track Two";
 
-            WithListSettings(ImportListMonitorType.SpecificAlbum, true, false);
+            WithListSettings(ImportListMonitorType.SpecificTrack, true, false);
 
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
 
@@ -689,12 +689,48 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithAlbum();
             _importListReports.First().TrackTitle = "Track One";
 
-            WithListSettings(ImportListMonitorType.SpecificAlbum, false, true);
+            WithListSettings(ImportListMonitorType.SpecificTrack, false, true);
 
             Subject.Execute(new ImportListSyncCommand());
 
             Mocker.GetMock<IAddAlbumService>()
                 .Verify(v => v.AddAlbums(It.Is<List<Album>>(t => t.Count == 1 && t.First().AddOptions.SearchForNewAlbum == true), false, true));
+        }
+
+        [Test]
+        public void should_monitor_by_track_title_only_under_specific_track()
+        {
+            WithAlbumId();
+            WithArtistId();
+            WithExistingAlbum(true);
+            _importListReports.First().TrackTitle = "Track Two";
+
+            WithListSettings(ImportListMonitorType.SpecificTrack, true, false);
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Returns(new List<Track>());
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()), Times.Once());
+        }
+
+        [Test]
+        public void should_not_monitor_by_track_title_under_specific_album()
+        {
+            WithAlbumId();
+            WithArtistId();
+            WithExistingAlbum(true);
+            _importListReports.First().TrackTitle = "Track Two";
+
+            WithListSettings(ImportListMonitorType.SpecificAlbum, true, false);
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(v => v.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>()), Times.Never());
         }
 
         [Test]
@@ -705,7 +741,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithExistingAlbum(true);
 
             // List A: ShouldSearch=true with "Song From List A"
-            var listA = new ImportListDefinition { Id = 1, ShouldMonitor = ImportListMonitorType.SpecificAlbum, ShouldMonitorExisting = true, ShouldSearch = true };
+            var listA = new ImportListDefinition { Id = 1, ShouldMonitor = ImportListMonitorType.SpecificTrack, ShouldMonitorExisting = true, ShouldSearch = true };
             var item1 = _importListReports.First();
             item1.ImportListId = 1;
             item1.TrackTitle = "Song From List A";
@@ -722,7 +758,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             };
             _importListReports.Add(item2);
 
-            var listB = new ImportListDefinition { Id = 2, ShouldMonitor = ImportListMonitorType.SpecificAlbum, ShouldMonitorExisting = true, ShouldSearch = false };
+            var listB = new ImportListDefinition { Id = 2, ShouldMonitor = ImportListMonitorType.SpecificTrack, ShouldMonitorExisting = true, ShouldSearch = false };
 
             Mocker.GetMock<IImportListFactory>()
                 .Setup(v => v.All())

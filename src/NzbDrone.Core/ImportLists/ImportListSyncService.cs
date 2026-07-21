@@ -216,7 +216,7 @@ namespace NzbDrone.Core.ImportLists
 
                 ProcessAlbumReportForExistingAlbum(importList, existingAlbum);
 
-                if (report.TrackTitle.IsNotNullOrWhiteSpace() && importList.ShouldMonitorExisting && importList.ShouldMonitor != ImportListMonitorType.None)
+                if (report.TrackTitle.IsNotNullOrWhiteSpace() && importList.ShouldMonitorExisting && importList.ShouldMonitor == ImportListMonitorType.SpecificTrack)
                 {
                     if (!existingAlbumTrackTitles.TryGetValue(existingAlbum.Id, out var titles))
                     {
@@ -261,13 +261,13 @@ namespace NzbDrone.Core.ImportLists
                     }
                 };
 
-                if (importList.ShouldMonitor == ImportListMonitorType.SpecificAlbum && toAddArtist.AddOptions != null)
+                if ((importList.ShouldMonitor == ImportListMonitorType.SpecificAlbum || importList.ShouldMonitor == ImportListMonitorType.SpecificTrack) && toAddArtist.AddOptions != null)
                 {
                     Debug.Assert(toAddArtist.Id == 0, "new artist added but ID is not 0");
                     toAddArtist.AddOptions.AlbumsToMonitor.Add(toAdd.ForeignAlbumId);
                 }
 
-                if (report.TrackTitle.IsNotNullOrWhiteSpace())
+                if (report.TrackTitle.IsNotNullOrWhiteSpace() && importList.ShouldMonitor == ImportListMonitorType.SpecificTrack)
                 {
                     toAdd.AddOptions.MonitorTrackTitles.Add(report.TrackTitle);
 
@@ -283,7 +283,7 @@ namespace NzbDrone.Core.ImportLists
 
                 albumsToAdd.Add(toAdd);
             }
-            else if (report.TrackTitle.IsNotNullOrWhiteSpace())
+            else if (report.TrackTitle.IsNotNullOrWhiteSpace() && importList.ShouldMonitor == ImportListMonitorType.SpecificTrack)
             {
                 existingToAdd.AddOptions.MonitorTrackTitles.Add(report.TrackTitle);
                 if (importList.ShouldSearch)
