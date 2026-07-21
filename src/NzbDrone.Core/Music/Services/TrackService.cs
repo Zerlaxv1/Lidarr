@@ -177,6 +177,16 @@ namespace NzbDrone.Core.Music
 
                 if (match == null)
                 {
+                    // Mirror the old monitored release's profile: a new-release track with
+                    // no monitored/filed counterpart must not stay monitored. Without this,
+                    // a freshly materialized release (PrepareNewChild defaults every track to
+                    // album.Monitored) leaves the whole release monitored after a switch.
+                    if (newTrack.Monitored)
+                    {
+                        newTrack.Monitored = false;
+                        changed.Add(newTrack);
+                    }
+
                     continue;
                 }
 

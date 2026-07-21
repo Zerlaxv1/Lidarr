@@ -167,7 +167,12 @@ namespace NzbDrone.Core.Test.MusicTests
 
             var result = Subject.RelinkTrackFilesToRelease(newRelease, new List<AlbumRelease> { oldRelease });
 
-            result.Should().BeEmpty();
+            // The unmonitored, fileless old track is not a valid match source, so no file is
+            // relinked - but the new track's monitored flag is still mirrored: with no
+            // monitored counterpart, it becomes unmonitored (and is reported as changed).
+            result.Should().ContainSingle(t => t.Id == 20);
+            newTracks.Single().TrackFileId.Should().Be(0);
+            newTracks.Single().Monitored.Should().BeFalse();
         }
 
         [Test]
@@ -228,6 +233,46 @@ namespace NzbDrone.Core.Test.MusicTests
 
             result.Should().BeEmpty();
             tracks.Single().Monitored.Should().BeFalse();
+        }
+
+        [Test]
+        public void should_unmonitor_new_release_tracks_with_no_monitored_counterpart()
+        {
+            var oldRelease = new AlbumRelease { Id = 1 };
+            var newRelease = new AlbumRelease { Id = 2 };
+
+            // Old monitored release: only "Bohemian Rhapsody" monitored, no files.
+            var oldTracks = new List<Track>
+            {
+                new Track { Id = 10, AlbumReleaseId = 1, ForeignRecordingId = "rec-bohemian", Title = "Bohemian Rhapsody", TrackFileId = 0, Monitored = true },
+                new Track { Id = 11, AlbumReleaseId = 1, ForeignRecordingId = "rec-death", Title = "Death on Two Legs", TrackFileId = 0, Monitored = false }
+            };
+
+            // New release tracks all default-monitored (as PrepareNewChild leaves them).
+            var newTracks = new List<Track>
+            {
+                new Track { Id = 20, AlbumReleaseId = 2, ForeignRecordingId = "rec-bohemian", Title = "Bohemian Rhapsody", TrackFileId = 0, Monitored = true },
+                new Track { Id = 21, AlbumReleaseId = 2, ForeignRecordingId = "rec-death", Title = "Death on Two Legs", TrackFileId = 0, Monitored = true },
+                new Track { Id = 22, AlbumReleaseId = 2, ForeignRecordingId = "rec-bff", Title = "You're My Best Friend", TrackFileId = 0, Monitored = true }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByRelease(1))
+                .Returns(oldTracks);
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByRelease(2))
+                .Returns(newTracks);
+
+            Subject.RelinkTrackFilesToRelease(newRelease, new List<AlbumRelease> { oldRelease });
+
+            // "Bohemian Rhapsody" stays monitored (had a monitored counterpart);
+            // every other new-release track becomes unmonitored (no counterpart) -
+            // "Death on Two Legs" is filtered out of oldTracks by the .Where(HasFile || Monitored)
+            // guard since it is unmonitored with no file, so new track 21 has no counterpart.
+            newTracks.Single(t => t.Id == 20).Monitored.Should().BeTrue();
+            newTracks.Single(t => t.Id == 21).Monitored.Should().BeFalse();
+            newTracks.Single(t => t.Id == 22).Monitored.Should().BeFalse();
         }
     }
 }
