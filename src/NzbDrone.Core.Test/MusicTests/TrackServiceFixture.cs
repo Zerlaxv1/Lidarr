@@ -141,8 +141,13 @@ namespace NzbDrone.Core.Test.MusicTests
             result.Select(t => t.TrackFileId).Should().OnlyHaveUniqueItems();
         }
 
+        // With the monitored-mirror invariant, an old counterpart that is ineligible for
+        // relink (no file AND unmonitored, filtered out by `t.HasFile || t.Monitored`)
+        // yields the same observable end-state as having no counterpart at all: the new
+        // track ends unmonitored with no file. This test pins that mirror end-state, not
+        // the eligibility filter itself (which no single Track-state assertion can isolate).
         [Test]
-        public void should_not_match_tracks_that_have_no_file_and_are_unmonitored()
+        public void should_unmonitor_and_not_relink_when_old_counterpart_is_ineligible()
         {
             var oldRelease = new AlbumRelease { Id = 1 };
             var newRelease = new AlbumRelease { Id = 2 };
