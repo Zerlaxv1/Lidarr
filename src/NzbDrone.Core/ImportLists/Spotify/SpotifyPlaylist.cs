@@ -37,6 +37,9 @@ namespace NzbDrone.Core.ImportLists.Spotify
         public IList<SpotifyImportListItemInfo> Fetch(SpotifyWebAPI api, string playlistId)
         {
             var result = new List<SpotifyImportListItemInfo>();
+            var raw = 0;
+            var droppedNullTrack = 0;
+            var droppedNoAlbum = 0;
 
             _logger.Trace($"Processing playlist {playlistId}");
 
@@ -46,12 +49,31 @@ namespace NzbDrone.Core.ImportLists.Spotify
             {
                 if (playlistTracks?.Items == null)
                 {
-                    return result;
+                    break;
                 }
 
                 foreach (var playlistTrack in playlistTracks.Items)
                 {
-                    result.AddIfNotNull(ParsePlaylistTrack(playlistTrack));
+                    raw++;
+
+                    // Spotify returns a null track object for entries unavailable in the
+                    // request market; passing market=from_token relinks most of them, but
+                    // any that remain null (or lack an album) are counted so the
+                    // playlist-to-library gap is visible rather than silent.
+                    if (playlistTrack?.Track == null)
+                    {
+                        droppedNullTrack++;
+                        continue;
+                    }
+
+                    var parsed = ParsePlaylistTrack(playlistTrack);
+                    if (parsed == null)
+                    {
+                        droppedNoAlbum++;
+                        continue;
+                    }
+
+                    result.Add(parsed);
                 }
 
                 if (!playlistTracks.HasNextPage())
@@ -61,6 +83,9 @@ namespace NzbDrone.Core.ImportLists.Spotify
 
                 playlistTracks = _spotifyProxy.GetNextPage(this, api, playlistTracks);
             }
+
+            _logger.Info("Spotify playlist {0}: {1} raw tracks fetched, {2} imported, dropped {3} unavailable (null track), {4} without album/artist",
+                playlistId, raw, result.Count, droppedNullTrack, droppedNoAlbum);
 
             return result;
         }

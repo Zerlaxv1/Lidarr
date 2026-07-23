@@ -60,7 +60,10 @@ namespace NzbDrone.Core.ImportLists.Spotify
         public Paging<PlaylistTrack> GetPlaylistTracks<TSettings>(SpotifyImportListBase<TSettings> list, SpotifyWebAPI api, string id, string fields)
             where TSettings : SpotifySettingsBase<TSettings>, new()
         {
-            return Execute(list, api, x => x.GetPlaylistTracks(id, fields: fields));
+            // market=from_token evaluates track availability against the authenticated
+            // user's market and relinks unavailable tracks to a playable equivalent, so
+            // playlist entries that would otherwise come back as a null track are returned.
+            return Execute(list, api, x => x.GetPlaylistTracks(id, market: "from_token", fields: fields));
         }
 
         public Paging<T> GetNextPage<T, TSettings>(SpotifyImportListBase<TSettings> list, SpotifyWebAPI api, Paging<T> item)
