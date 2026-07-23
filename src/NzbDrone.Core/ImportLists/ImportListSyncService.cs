@@ -92,6 +92,7 @@ namespace NzbDrone.Core.ImportLists
             var albumsToAdd = new List<Album>();
             var existingAlbumTrackTitles = new Dictionary<int, List<string>>();
             var existingAlbumSearchTitles = new Dictionary<int, List<string>>();
+            var mappedItems = 0;
 
             if (items.Count == 0)
             {
@@ -118,6 +119,14 @@ namespace NzbDrone.Core.ImportLists
                     if (item.AlbumMusicBrainzId.IsNullOrWhiteSpace() || item.ArtistMusicBrainzId.IsNullOrWhiteSpace())
                     {
                         MapAlbumReport(item);
+                    }
+
+                    // Funnel diagnostics: an item counts as "mapped" once it resolved to a
+                    // real MusicBrainz album id (Spotify playlist tracks that don't resolve
+                    // fall out here, which is the main source of the playlist->library gap).
+                    if (item.AlbumMusicBrainzId.IsNotNullOrWhiteSpace())
+                    {
+                        mappedItems++;
                     }
 
                     ProcessAlbumReport(importList, item, listExclusions, albumsToAdd, artistsToAdd, existingAlbumTrackTitles, existingAlbumSearchTitles);
@@ -156,6 +165,14 @@ namespace NzbDrone.Core.ImportLists
             {
                 _commandQueueManager.Push(new TrackSearchCommand(tracksToSearch));
             }
+
+            // ponytail: diagnostic funnel line for the Spotify playlist->library gap (Bug 4b).
+            // songModeTitles = per-track titles queued for monitoring on existing albums plus
+            // those carried on newly-added albums (deferred to ApplyPendingTrackMonitoring).
+            var songModeTitles = existingAlbumTrackTitles.Values.Sum(v => v.Count)
+                               + albumsToAdd.Sum(a => a.AddOptions.MonitorTrackTitles.Count);
+
+            _logger.Info("Import list sync funnel: {0} items processed, {1} mapped to albums, {2} song-mode track titles monitored", items.Count, mappedItems, songModeTitles);
 
             var message = string.Format($"Import List Sync Completed. Items found: {items.Count}, Artists added: {addedArtists.Count}, Albums added: {addedAlbums.Count}");
 
