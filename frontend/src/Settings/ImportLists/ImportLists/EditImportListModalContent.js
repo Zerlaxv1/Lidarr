@@ -51,7 +51,8 @@ function EditImportListModalContent(props) {
   const monitorOptions = [
     { key: 'none', value: translate('None') },
     { key: 'specificAlbum', value: translate('SpecificAlbum') },
-    { key: 'entireArtist', value: translate('AllArtistAlbums') }
+    { key: 'entireArtist', value: translate('AllArtistAlbums') },
+    { key: 'specificTrack', value: translate('SpecificTrack') }
   ];
 
   const {

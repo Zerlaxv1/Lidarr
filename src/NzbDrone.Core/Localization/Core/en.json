@@ -1198,6 +1198,7 @@
   "Space": "Space",
   "SpecificAlbum": "Specific Album",
   "SpecificMonitoringOptionHelpText": "Monitor artists but only monitor albums explicitly included in the list",
+  "SpecificTrack": "Specific Track",
   "SslCertPasswordHelpText": "Password for pfx file",
   "SslCertPasswordHelpTextWarning": "Requires restart to take effect",
   "SslCertPathHelpText": "Path to pfx file",
