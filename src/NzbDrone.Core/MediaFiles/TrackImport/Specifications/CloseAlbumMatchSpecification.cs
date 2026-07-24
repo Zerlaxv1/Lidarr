@@ -26,7 +26,17 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Specifications
             // strict when a new download
             if (item.NewDownload)
             {
-                dist = item.Distance.NormalizedDistance();
+                // A song-mode / single-track grab carries fewer tracks than the full
+                // release and cannot satisfy album-completeness attributes (missing /
+                // unmatched tracks) or album-level tags a single-track source rarely sets
+                // (label, media format). For a partial grab, judge on artist / album /
+                // year plus the quality of the track(s) actually present (the worst-track
+                // check below) rather than on completeness — the same reasoning the
+                // existing-files branch already applies for the track-count penalties.
+                var releaseTrackCount = item.AlbumRelease?.TrackCount ?? item.TrackCount;
+                dist = item.TrackCount < releaseTrackCount
+                    ? item.Distance.NormalizedDistanceExcluding(new List<string> { "missing_tracks", "unmatched_tracks", "label", "media_format" })
+                    : item.Distance.NormalizedDistance();
                 reasons = item.Distance.Reasons;
                 if (dist > _albumThreshold)
                 {
