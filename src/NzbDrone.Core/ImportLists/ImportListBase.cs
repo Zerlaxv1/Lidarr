@@ -64,7 +64,9 @@ namespace NzbDrone.Core.ImportLists
 
         protected virtual IList<ImportListItemInfo> CleanupListItems(IEnumerable<ImportListItemInfo> releases)
         {
-            var result = releases.DistinctBy(r => new { r.Artist, r.Album, r.ArtistMusicBrainzId }).ToList();
+            // TrackTitle is part of the key so song-mode lists keep every track of an album;
+            // it is null for album/artist lists, which dedupe exactly as before.
+            var result = releases.DistinctBy(r => new { r.Artist, r.Album, r.ArtistMusicBrainzId, r.TrackTitle }).ToList();
 
             result.ForEach(c =>
             {
