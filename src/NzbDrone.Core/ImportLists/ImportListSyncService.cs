@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -190,7 +191,19 @@ namespace NzbDrone.Core.ImportLists
         private void MapAlbumReport(ImportListItemInfo report)
         {
             var albumQuery = report.AlbumMusicBrainzId.IsNotNullOrWhiteSpace() ? $"lidarr:{report.AlbumMusicBrainzId}" : report.Album;
-            var mappedAlbum = _albumSearchService.SearchForNewAlbum(albumQuery, report.Artist).FirstOrDefault();
+
+            Album mappedAlbum;
+
+            try
+            {
+                mappedAlbum = _albumSearchService.SearchForNewAlbum(albumQuery, report.Artist).FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                // A flaky metadata server must not abort the whole sync; skip this item only.
+                _logger.Warn(ex, "Lookup failed for album [{0}] by [{1}], skipping item", albumQuery, report.Artist);
+                return;
+            }
 
             // Break if we are looking for an album and cant find it. This will avoid us from adding the artist and possibly getting it wrong.
             if (mappedAlbum == null)
@@ -350,7 +363,19 @@ namespace NzbDrone.Core.ImportLists
 
         private void MapArtistReport(ImportListItemInfo report)
         {
-            var mappedArtist = _artistSearchService.SearchForNewArtist(report.Artist).FirstOrDefault();
+            Artist mappedArtist;
+
+            try
+            {
+                mappedArtist = _artistSearchService.SearchForNewArtist(report.Artist).FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                // A flaky metadata server must not abort the whole sync; skip this item only.
+                _logger.Warn(ex, "Lookup failed for artist [{0}], skipping item", report.Artist);
+                return;
+            }
+
             report.ArtistMusicBrainzId = mappedArtist?.Metadata.Value?.ForeignArtistId;
             report.Artist = mappedArtist?.Metadata.Value?.Name;
         }
