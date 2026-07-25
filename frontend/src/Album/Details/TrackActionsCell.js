@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import TrackInteractiveSearchModal from 'Album/Search/TrackInteractiveSearchModal';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
@@ -18,7 +19,8 @@ class TrackActionsCell extends Component {
 
     this.state = {
       isDetailsModalOpen: false,
-      isConfirmDeleteModalOpen: false
+      isConfirmDeleteModalOpen: false,
+      isInteractiveSearchModalOpen: false
     };
   }
 
@@ -50,19 +52,30 @@ class TrackActionsCell extends Component {
     this.props.onSearchTrackPress(this.props.id);
   };
 
+  onInteractiveSearchPress = () => {
+    this.setState({ isInteractiveSearchModalOpen: true });
+  };
+
+  onInteractiveSearchModalClose = () => {
+    this.setState({ isInteractiveSearchModalOpen: false });
+  };
+
   //
   // Render
 
   render() {
 
     const {
+      id,
+      title,
       trackFileId,
       trackFilePath
     } = this.props;
 
     const {
       isDetailsModalOpen,
-      isConfirmDeleteModalOpen
+      isConfirmDeleteModalOpen,
+      isInteractiveSearchModalOpen
     } = this.state;
 
     return (
@@ -71,6 +84,12 @@ class TrackActionsCell extends Component {
           name={icons.SEARCH}
           title={translate('AutomaticSearch')}
           onPress={this.onSearchPress}
+        />
+
+        <IconButton
+          name={icons.INTERACTIVE}
+          title={translate('InteractiveSearch')}
+          onPress={this.onInteractiveSearchPress}
         />
         {
           trackFilePath &&
@@ -86,6 +105,13 @@ class TrackActionsCell extends Component {
               onPress={this.onDeleteFilePress}
             />
         }
+
+        <TrackInteractiveSearchModal
+          isOpen={isInteractiveSearchModalOpen}
+          trackId={id}
+          trackTitle={title}
+          onModalClose={this.onInteractiveSearchModalClose}
+        />
 
         <FileDetailsModal
           isOpen={isDetailsModalOpen}
@@ -111,6 +137,7 @@ class TrackActionsCell extends Component {
 TrackActionsCell.propTypes = {
   id: PropTypes.number.isRequired,
   albumId: PropTypes.number.isRequired,
+  title: PropTypes.string,
   trackFilePath: PropTypes.string,
   trackFileId: PropTypes.number.isRequired,
   deleteTrackFile: PropTypes.func.isRequired,

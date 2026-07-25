@@ -231,6 +231,7 @@ class TrackRow extends Component {
                   <EpisodeStatusConnector
                     albumId={albumId}
                     trackFileId={trackFileId}
+                    hideUnmonitored={true}
                   />
                 </TableRowCell>
               );
@@ -242,6 +243,7 @@ class TrackRow extends Component {
                   key={name}
                   albumId={albumId}
                   id={id}
+                  title={title}
                   trackFilePath={trackFilePath}
                   trackFileId={trackFileId}
                   deleteTrackFile={deleteTrackFile}

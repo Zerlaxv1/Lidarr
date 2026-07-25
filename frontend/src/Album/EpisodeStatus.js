@@ -15,7 +15,8 @@ function EpisodeStatus(props) {
     monitored,
     grabbed,
     queueItem,
-    trackFile
+    trackFile,
+    hideUnmonitored
   } = props;
 
   const hasTrackFile = !!trackFile;
@@ -86,6 +87,12 @@ function EpisodeStatus(props) {
   }
 
   if (!monitored) {
+    // A row that already shows a monitor toggle would otherwise carry the very same
+    // outline bookmark twice, on every single track.
+    if (hideUnmonitored) {
+      return null;
+    }
+
     return (
       <div className={styles.center}>
         <Icon
@@ -122,7 +129,8 @@ EpisodeStatus.propTypes = {
   monitored: PropTypes.bool,
   grabbed: PropTypes.bool,
   queueItem: PropTypes.object,
-  trackFile: PropTypes.object
+  trackFile: PropTypes.object,
+  hideUnmonitored: PropTypes.bool
 };
 
 export default EpisodeStatus;

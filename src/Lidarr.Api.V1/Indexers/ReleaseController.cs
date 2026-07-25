@@ -139,8 +139,13 @@ namespace Lidarr.Api.V1.Indexers
         }
 
         [HttpGet]
-        public async Task<List<ReleaseResource>> GetReleases(int? albumId, int? artistId)
+        public async Task<List<ReleaseResource>> GetReleases(int? albumId, int? artistId, int? trackId)
         {
+            if (trackId.HasValue)
+            {
+                return await GetTrackReleases(trackId.Value);
+            }
+
             if (albumId.HasValue)
             {
                 return await GetAlbumReleases(int.Parse(Request.Query["albumId"]));
@@ -152,6 +157,22 @@ namespace Lidarr.Api.V1.Indexers
             }
 
             return await GetRss();
+        }
+
+        private async Task<List<ReleaseResource>> GetTrackReleases(int trackId)
+        {
+            try
+            {
+                var decisions = await _releaseSearchService.TrackSearch(trackId, true, true);
+                var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(decisions);
+
+                return MapDecisions(prioritizedDecisions);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Track search failed");
+                throw new NzbDroneClientException(HttpStatusCode.InternalServerError, ex.Message);
+            }
         }
 
         private async Task<List<ReleaseResource>> GetAlbumReleases(int albumId)
