@@ -222,6 +222,47 @@ namespace NzbDrone.Core.Test.MusicTests
             result.Should().ContainSingle(t => t.Id == 1);
         }
 
+        [TestCase("Bohemian Rhapsody - Remastered 2011", "Bohemian Rhapsody")]
+        [TestCase("The Man Who Sold The World - Live", "The Man Who Sold The World")]
+        [TestCase("Song 2 - 2012 Remaster", "Song 2")]
+        [TestCase("California Dreamin' - Single Version", "California Dreamin'")]
+        [TestCase("She's My Collar (feat. Kali Uchis)", "She's My Collar")]
+        public void should_match_spotify_titles_that_carry_editorial_suffixes(string listTitle, string trackTitle)
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = trackTitle, Monitored = false }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { listTitle });
+
+            result.Should().ContainSingle(t => t.Id == 1);
+            tracks.Single().Monitored.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_prefer_the_exact_title_over_a_suffix_stripped_one()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "Bohemian Rhapsody", Monitored = false },
+                new Track { Id = 2, Title = "Bohemian Rhapsody - Live", Monitored = false }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Bohemian Rhapsody - Live" });
+
+            result.Should().ContainSingle(t => t.Id == 2);
+            tracks.Single(t => t.Id == 1).Monitored.Should().BeFalse();
+        }
+
         [Test]
         public void should_return_empty_when_no_title_matches()
         {

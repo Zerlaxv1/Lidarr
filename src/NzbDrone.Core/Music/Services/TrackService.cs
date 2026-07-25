@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
@@ -206,25 +207,66 @@ namespace NzbDrone.Core.Music
 
         public List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles)
         {
-            var normalizedTitles = new HashSet<string>(titles.Select(NormalizeTrackTitleForMatch));
             var tracks = _trackRepository.GetTracksByAlbum(albumId);
-            var matched = new List<Track>();
+            var matched = MatchTracksByTitle(tracks, titles);
 
             foreach (var track in tracks)
             {
-                var shouldMonitor = normalizedTitles.Contains(NormalizeTrackTitleForMatch(track.Title));
-                track.Monitored = shouldMonitor;
-
-                if (shouldMonitor)
-                {
-                    matched.Add(track);
-                }
+                track.Monitored = matched.Contains(track);
             }
 
             _trackRepository.UpdateMany(tracks);
 
             return matched;
         }
+
+        // Streaming services decorate track titles with editorial suffixes MusicBrainz does
+        // not carry ("- Remastered 2011", "- Live", "(feat. X)"). Match exactly first, then
+        // give only the still-unmatched titles a second pass with those suffixes stripped,
+        // so a decorated title can never steal a track that some title matched exactly.
+        public static List<Track> MatchTracksByTitle(List<Track> tracks, IEnumerable<string> titles)
+        {
+            var wanted = titles.ToList();
+            var exact = new HashSet<string>(wanted.Select(NormalizeTrackTitleForMatch));
+
+            var matched = tracks.Where(t => exact.Contains(NormalizeTrackTitleForMatch(t.Title))).ToList();
+
+            var unmatched = wanted.Where(w => !matched.Any(m => NormalizeTrackTitleForMatch(m.Title) == NormalizeTrackTitleForMatch(w))).ToList();
+
+            if (unmatched.Any())
+            {
+                var relaxed = new HashSet<string>(unmatched.Select(NormalizeTrackTitleRelaxed));
+
+                matched.AddRange(tracks.Where(t => !matched.Contains(t) && relaxed.Contains(NormalizeTrackTitleRelaxed(t.Title))));
+            }
+
+            return matched;
+        }
+
+        private static string NormalizeTrackTitleRelaxed(string title)
+        {
+            return NormalizeTrackTitleForMatch(StripEditorialSuffix(title));
+        }
+
+        private static string StripEditorialSuffix(string title)
+        {
+            if (title.IsNullOrWhiteSpace())
+            {
+                return title;
+            }
+
+            return EditorialTailRegex.Replace(FeaturedArtistRegex.Replace(title, string.Empty), string.Empty).Trim();
+        }
+
+        // " - Remastered 2011", " - Live", " - 2012 Remaster", " - Single Version" ...
+        private static readonly Regex EditorialTailRegex = new Regex(
+            @"\s+-\s+[^-]*\b(?:remaster(?:ed)?|live|mono|stereo|version|edit|mix|edition|anniversary|bonus|demo|acoustic|instrumental|radio|session|take)\b.*$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // "(feat. X)", "[featuring X]", "(with X)"
+        private static readonly Regex FeaturedArtistRegex = new Regex(
+            @"\s*[\(\[]\s*(?:feat|ft|featuring|with)\b\.?[^\)\]]*[\)\]]",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         // NormalizeTitle collapses delimiters (., -, _, etc.) to a single space rather than
         // removing them, so "B.Y.O.B." normalizes to "b y o b" while "byob" normalizes to
@@ -243,9 +285,7 @@ namespace NzbDrone.Core.Music
         // list touching the same album happened to also monitor it.
         public static List<int> GetTrackIdsMatchingTitles(List<Track> tracks, List<string> titles)
         {
-            var normalizedTitles = new HashSet<string>(titles.Select(NormalizeTrackTitleForMatch));
-
-            return tracks.Where(t => normalizedTitles.Contains(NormalizeTrackTitleForMatch(t.Title))).Select(t => t.Id).ToList();
+            return MatchTracksByTitle(tracks, titles).Select(t => t.Id).ToList();
         }
 
         public void Handle(ReleaseDeletedEvent message)
