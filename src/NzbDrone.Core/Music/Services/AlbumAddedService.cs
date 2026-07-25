@@ -88,7 +88,9 @@ namespace NzbDrone.Core.Music
                 // reference, which gets cleared below in this same iteration. Passing it
                 // directly would hand the callee (and any test double recording the call)
                 // a reference that no longer reflects what was actually requested.
-                var matched = _trackService.SetMonitoredByTitle(album.Id, titles.ToList());
+                // The album has just been added with every track monitored, so the list's
+                // titles are the whole selection here.
+                var matched = _trackService.SetMonitoredByTitle(album.Id, titles.ToList(), true);
 
                 if (matched.Empty())
                 {

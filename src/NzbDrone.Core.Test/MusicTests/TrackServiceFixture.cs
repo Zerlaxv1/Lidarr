@@ -194,7 +194,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Bliss" });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Bliss" }, true);
 
             result.Should().ContainSingle(t => t.Id == 1);
             tracks.Single(t => t.Id == 1).Monitored.Should().BeTrue();
@@ -203,6 +203,28 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<ITrackRepository>()
                 .Verify(s => s.UpdateMany(tracks), Times.Once());
+        }
+
+        [Test]
+        public void should_not_unmonitor_tracks_the_list_did_not_mention()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "Bliss", Monitored = false },
+                new Track { Id = 2, Title = "Muscle Museum", Monitored = true }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Bliss" }, false);
+
+            result.Should().ContainSingle(t => t.Id == 1);
+            tracks.Single(t => t.Id == 1).Monitored.Should().BeTrue();
+
+            // Picked by hand, never named by the list: it must survive the sync.
+            tracks.Single(t => t.Id == 2).Monitored.Should().BeTrue();
         }
 
         [Test]
@@ -217,7 +239,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { "byob" });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "byob" }, true);
 
             result.Should().ContainSingle(t => t.Id == 1);
         }
@@ -238,7 +260,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { listTitle });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { listTitle }, true);
 
             result.Should().ContainSingle(t => t.Id == 1);
             tracks.Single().Monitored.Should().BeTrue();
@@ -261,7 +283,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { listTitle });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { listTitle }, true);
 
             result.Should().ContainSingle(t => t.Id == 1);
         }
@@ -287,7 +309,7 @@ namespace NzbDrone.Core.Test.MusicTests
                     { "rec-2", new List<string> { "Akuma no Ko" } }
                 });
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Akuma no Ko" });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Akuma no Ko" }, true);
 
             result.Should().ContainSingle(t => t.Id == 2);
             tracks.Single(t => t.Id == 2).Monitored.Should().BeTrue();
@@ -306,7 +328,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            Subject.SetMonitoredByTitle(5, new List<string> { "Bliss" });
+            Subject.SetMonitoredByTitle(5, new List<string> { "Bliss" }, true);
 
             Mocker.GetMock<IProvideRecordingAliases>()
                 .Verify(s => s.GetAliases(It.IsAny<int>()), Times.Never());
@@ -325,7 +347,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Another Brick in the Wall, Pt. 2" });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Another Brick in the Wall, Pt. 2" }, true);
 
             result.Should().BeEmpty();
         }
@@ -343,7 +365,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Bohemian Rhapsody - Live" });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Bohemian Rhapsody - Live" }, true);
 
             result.Should().ContainSingle(t => t.Id == 2);
             tracks.Single(t => t.Id == 1).Monitored.Should().BeFalse();
@@ -361,7 +383,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(s => s.GetTracksByAlbum(5))
                 .Returns(tracks);
 
-            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Nonexistent" });
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Nonexistent" }, true);
 
             result.Should().BeEmpty();
             tracks.Single().Monitored.Should().BeFalse();

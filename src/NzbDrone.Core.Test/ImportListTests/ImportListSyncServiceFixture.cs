@@ -606,13 +606,13 @@ namespace NzbDrone.Core.Test.ImportListTests
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(v => v.SetMonitoredByTitle(1, It.Is<List<string>>(l => l.Single() == "Track Two")))
+                .Setup(v => v.SetMonitoredByTitle(1, It.Is<List<string>>(l => l.Single() == "Track Two"), false))
                 .Returns(new List<Track> { matchedTrack });
 
             Subject.Execute(new ImportListSyncCommand());
 
             Mocker.GetMock<ITrackService>()
-                .Verify(v => v.SetMonitoredByTitle(1, It.Is<List<string>>(l => l.Single() == "Track Two")), Times.Once());
+                .Verify(v => v.SetMonitoredByTitle(1, It.Is<List<string>>(l => l.Single() == "Track Two"), false), Times.Once());
         }
 
         [Test]
@@ -628,7 +628,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             Subject.Execute(new ImportListSyncCommand());
 
             Mocker.GetMock<ITrackService>()
-                .Verify(v => v.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>()), Times.Never());
+                .Verify(v => v.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>(), It.IsAny<bool>()), Times.Never());
         }
 
         [Test]
@@ -681,7 +681,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).With(t => t.Title = "Track Two").Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track> { matchedTrack });
 
             Subject.Execute(new ImportListSyncCommand());
@@ -703,7 +703,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 55).Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track> { matchedTrack });
 
             Subject.Execute(new ImportListSyncCommand());
@@ -739,13 +739,13 @@ namespace NzbDrone.Core.Test.ImportListTests
             WithListSettings(ImportListMonitorType.SpecificTrack, true, false);
 
             Mocker.GetMock<ITrackService>()
-                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track>());
 
             Subject.Execute(new ImportListSyncCommand());
 
             Mocker.GetMock<ITrackService>()
-                .Verify(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()), Times.Once());
+                .Verify(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>(), It.IsAny<bool>()), Times.Once());
         }
 
         [Test]
@@ -761,7 +761,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             Subject.Execute(new ImportListSyncCommand());
 
             Mocker.GetMock<ITrackService>()
-                .Verify(v => v.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>()), Times.Never());
+                .Verify(v => v.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>(), It.IsAny<bool>()), Times.Never());
         }
 
         [Test]
@@ -799,7 +799,7 @@ namespace NzbDrone.Core.Test.ImportListTests
             var trackB = Builder<Track>.CreateNew().With(t => t.Id = 101).With(t => t.Title = "Song From List B").Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>()))
+                .Setup(v => v.SetMonitoredByTitle(1, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track> { trackA, trackB });
 
             Subject.Execute(new ImportListSyncCommand());

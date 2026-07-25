@@ -154,7 +154,10 @@ namespace NzbDrone.Core.ImportLists
 
             foreach (var kvp in existingAlbumTrackTitles)
             {
-                var matched = _trackService.SetMonitoredByTitle(kvp.Key, kvp.Value);
+                // Additive on an album already in the library: the list says which tracks it
+                // wants, not which ones nobody else may want. Mirroring exclusively here
+                // unmonitored every track the user had picked by hand, on every sync.
+                var matched = _trackService.SetMonitoredByTitle(kvp.Key, kvp.Value, false);
 
                 if (matched.Empty())
                 {

@@ -34,7 +34,10 @@ namespace NzbDrone.Core.Music
         void SetMonitored(IEnumerable<int> ids, bool monitored);
         List<Track> RelinkTrackFilesToRelease(AlbumRelease newRelease, List<AlbumRelease> oldReleases);
         List<Track> SearchTracksByTitle(string title, int limit);
-        List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles);
+        // unmonitorOthers mirrors the given titles exactly, which is what a freshly added
+        // album wants; an album already in the library must not have a list wipe the
+        // monitoring the user (or another list) put there.
+        List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles, bool unmonitorOthers);
     }
 
     public class TrackService : ITrackService,
@@ -208,7 +211,7 @@ namespace NzbDrone.Core.Music
             return changed;
         }
 
-        public List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles)
+        public List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles, bool unmonitorOthers)
         {
             var titleList = titles.ToList();
             var tracks = _trackRepository.GetTracksByAlbum(albumId);
@@ -218,7 +221,14 @@ namespace NzbDrone.Core.Music
 
             foreach (var track in tracks)
             {
-                track.Monitored = matched.Contains(track);
+                if (matched.Contains(track))
+                {
+                    track.Monitored = true;
+                }
+                else if (unmonitorOthers)
+                {
+                    track.Monitored = false;
+                }
             }
 
             _trackRepository.UpdateMany(tracks);

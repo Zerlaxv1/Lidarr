@@ -34,16 +34,16 @@ namespace NzbDrone.Core.Test.MusicTests
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 99).Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(s => s.SetMonitoredByTitle(10, It.Is<List<string>>(l => l.Single() == "Track One")))
+                .Setup(s => s.SetMonitoredByTitle(10, It.Is<List<string>>(l => l.Single() == "Track One"), true))
                 .Returns(new List<Track> { matchedTrack });
 
             Subject.SearchForRecentlyAdded(5);
 
             Mocker.GetMock<ITrackService>()
-                .Verify(s => s.SetMonitoredByTitle(10, It.Is<List<string>>(l => l.Single() == "Track One")), Times.Once());
+                .Verify(s => s.SetMonitoredByTitle(10, It.Is<List<string>>(l => l.Single() == "Track One"), true), Times.Once());
 
             Mocker.GetMock<ITrackService>()
-                .Verify(s => s.SetMonitoredByTitle(11, It.IsAny<List<string>>()), Times.Never());
+                .Verify(s => s.SetMonitoredByTitle(11, It.IsAny<List<string>>(), It.IsAny<bool>()), Times.Never());
         }
 
         [Test]
@@ -59,7 +59,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Returns(new List<Album> { songModeAlbum });
 
             Mocker.GetMock<ITrackService>()
-                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track>());
 
             Subject.SearchForRecentlyAdded(5);
@@ -85,7 +85,7 @@ namespace NzbDrone.Core.Test.MusicTests
             Subject.SearchForRecentlyAdded(5);
 
             Mocker.GetMock<ITrackService>()
-                .Verify(s => s.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>()), Times.Never());
+                .Verify(s => s.SetMonitoredByTitle(It.IsAny<int>(), It.IsAny<List<string>>(), It.IsAny<bool>()), Times.Never());
         }
 
         [Test]
@@ -103,7 +103,7 @@ namespace NzbDrone.Core.Test.MusicTests
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 99).With(t => t.Title = "Track One").Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track> { matchedTrack });
 
             Subject.SearchForRecentlyAdded(5);
@@ -125,7 +125,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Returns(new List<Album> { songModeAlbum });
 
             Mocker.GetMock<ITrackService>()
-                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track> { Builder<Track>.CreateNew().With(t => t.Id = 99).Build() });
 
             Subject.SearchForRecentlyAdded(5);
@@ -149,7 +149,7 @@ namespace NzbDrone.Core.Test.MusicTests
             var matchedTrack = Builder<Track>.CreateNew().With(t => t.Id = 99).Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track> { matchedTrack });
 
             Subject.SearchForRecentlyAdded(5);
@@ -174,7 +174,7 @@ namespace NzbDrone.Core.Test.MusicTests
             var trackB = Builder<Track>.CreateNew().With(t => t.Id = 101).With(t => t.Title = "Song From List B").Build();
 
             Mocker.GetMock<ITrackService>()
-                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>()))
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>(), It.IsAny<bool>()))
                 .Returns(new List<Track> { trackA, trackB });
 
             Subject.SearchForRecentlyAdded(5);
