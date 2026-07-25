@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using NLog;
 using NzbDrone.Common.Instrumentation;
 using NzbDrone.Common.Instrumentation.Extensions;
@@ -28,7 +29,10 @@ namespace NzbDrone.Core.MediaFiles
 
         public static string FormatAudioSampleRate(MediaInfoModel mediaInfo)
         {
-            return $"{(double)mediaInfo.AudioSampleRate / 1000:0.#}kHz";
+            // Invariant like the channel count next to it in FileNameBuilder: a file named
+            // on a French system would otherwise read "44,1kHz" and not match the same file
+            // named anywhere else.
+            return string.Format(CultureInfo.InvariantCulture, "{0:0.#}kHz", (double)mediaInfo.AudioSampleRate / 1000);
         }
 
         public static decimal FormatAudioChannels(MediaInfoModel mediaInfo)
