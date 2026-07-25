@@ -32,11 +32,14 @@ function getAlbumStatistics(albums) {
   albums.forEach(({ monitored, releaseDate, statistics = {} }) => {
     const {
       trackFileCount: albumTrackFileCount = 0,
-      totalTrackCount: albumTotalTrackCount = 0,
+      trackCount: albumTrackCount = 0,
       sizeOnDisk: albumSizeOnDisk = 0
     } = statistics;
 
-    const hasFiles = albumTrackFileCount > 0 && albumTrackFileCount === albumTotalTrackCount;
+    // trackCount is the number of tracks that are actually wanted (monitored, or already on
+    // disk), unlike totalTrackCount which counts the whole tracklist and would never be
+    // reached by an album where a single track is monitored.
+    const hasFiles = albumTrackFileCount > 0 && albumTrackFileCount === albumTrackCount;
 
     if (hasFiles || (monitored && isBefore(releaseDate))) {
       albumCount++;

@@ -13,13 +13,21 @@ import TrackRowConnector from './TrackRowConnector';
 import styles from './AlbumDetailsMedium.css';
 
 function getMediumStatistics(tracks) {
-  const trackCount = tracks.length;
+  let trackCount = 0;
   let trackFileCount = 0;
   let totalTrackCount = 0;
 
   tracks.forEach((track) => {
     if (track.trackFileId) {
       trackFileCount++;
+    }
+
+    // Unmonitored tracks are missing on purpose, so counting them would keep this label red
+    // forever on an album where a single track is wanted. A track that is already on disk
+    // still counts, the same way the album statistics of the API count it, so that the label
+    // can never show more files than tracks.
+    if (track.monitored || track.trackFileId) {
+      trackCount++;
     }
 
     totalTrackCount++;

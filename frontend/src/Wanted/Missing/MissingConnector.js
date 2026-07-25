@@ -5,11 +5,8 @@ import { createSelector } from 'reselect';
 import * as commandNames from 'Commands/commandNames';
 import withCurrentPage from 'Components/withCurrentPage';
 import { executeCommand } from 'Store/Actions/commandActions';
-import { clearQueueDetails, fetchQueueDetails } from 'Store/Actions/queueActions';
 import * as wantedActions from 'Store/Actions/wantedActions';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
-import hasDifferentItems from 'Utilities/Object/hasDifferentItems';
-import selectUniqueIds from 'Utilities/Object/selectUniqueIds';
 import { registerPagePopulator, unregisterPagePopulator } from 'Utilities/pagePopulator';
 import Missing from './Missing';
 
@@ -33,9 +30,7 @@ function createMapStateToProps() {
 
 const mapDispatchToProps = {
   ...wantedActions,
-  executeCommand,
-  fetchQueueDetails,
-  clearQueueDetails
+  executeCommand
 };
 
 class MissingConnector extends Component {
@@ -59,17 +54,9 @@ class MissingConnector extends Component {
     }
   }
 
-  componentDidUpdate(prevProps) {
-    if (hasDifferentItems(prevProps.items, this.props.items)) {
-      const albumIds = selectUniqueIds(this.props.items, 'albumId');
-      this.props.fetchQueueDetails({ albumIds });
-    }
-  }
-
   componentWillUnmount() {
     unregisterPagePopulator(this.repopulate);
     this.props.clearMissing();
-    this.props.clearQueueDetails();
   }
 
   //
@@ -169,9 +156,7 @@ MissingConnector.propTypes = {
   setMissingFilter: PropTypes.func.isRequired,
   setMissingTableOption: PropTypes.func.isRequired,
   clearMissing: PropTypes.func.isRequired,
-  executeCommand: PropTypes.func.isRequired,
-  fetchQueueDetails: PropTypes.func.isRequired,
-  clearQueueDetails: PropTypes.func.isRequired
+  executeCommand: PropTypes.func.isRequired
 };
 
 export default withCurrentPage(
