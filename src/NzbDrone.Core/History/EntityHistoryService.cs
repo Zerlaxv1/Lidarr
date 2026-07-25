@@ -148,6 +148,11 @@ namespace NzbDrone.Core.History
                     SourceTitle = message.Album.Release.Title,
                     ArtistId = album.ArtistId,
                     AlbumId = album.Id,
+
+                    // A song-mode grab is about one track, so record it: otherwise the
+                    // history says only "album grabbed" and the track is lost from the
+                    // record entirely.
+                    TrackId = message.Album.Tracks?.Count == 1 ? message.Album.Tracks[0].Id : 0,
                     DownloadId = message.DownloadId
                 };
 

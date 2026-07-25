@@ -104,6 +104,14 @@ namespace NzbDrone.Core.DecisionEngine
 
                         remoteAlbum.Release = report;
 
+                        // A track search knows which track it wants; carrying it on the
+                        // decision is what lets the queue, history and notifications name
+                        // the track rather than the whole album.
+                        if (searchCriteria?.Tracks != null && searchCriteria.Tracks.Any())
+                        {
+                            remoteAlbum.Tracks = searchCriteria.Tracks;
+                        }
+
                         if (remoteAlbum.Artist == null)
                         {
                             decision = new DownloadDecision(remoteAlbum, new Rejection("Unknown Artist"));

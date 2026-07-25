@@ -13,6 +13,11 @@ namespace NzbDrone.Core.Parser.Model
         public ParsedAlbumInfo ParsedAlbumInfo { get; set; }
         public Artist Artist { get; set; }
         public List<Album> Albums { get; set; }
+
+        // The tracks a song-mode search asked for, when it asked for specific ones. Without
+        // this the album is all anything downstream - queue, history, notifications - can
+        // name, even for a grab that was only ever about one track.
+        public List<Track> Tracks { get; set; }
         public bool DownloadAllowed { get; set; }
         public TorrentSeedConfiguration SeedConfiguration { get; set; }
         public List<CustomFormat> CustomFormats { get; set; }
@@ -22,6 +27,7 @@ namespace NzbDrone.Core.Parser.Model
         public RemoteAlbum()
         {
             Albums = new List<Album>();
+            Tracks = new List<Track>();
             CustomFormats = new List<CustomFormat>();
         }
 
