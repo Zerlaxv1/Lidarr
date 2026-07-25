@@ -108,10 +108,17 @@ namespace NzbDrone.Core.ImportLists.Spotify
                 releases = Fetch(api);
             }
 
+            var fetched = releases.Count;
+
             // map to musicbrainz ids
             releases = MapSpotifyReleases(releases);
+            var mapped = releases.Count;
 
-            return CleanupListItems(releases);
+            var result = CleanupListItems(releases);
+
+            _logger.Info("Spotify list pipeline: {0} fetched, {1} survived MusicBrainz mapping, {2} after dedup", fetched, mapped, result.Count);
+
+            return result;
         }
 
         public abstract IList<SpotifyImportListItemInfo> Fetch(SpotifyWebAPI api);
@@ -202,6 +209,13 @@ namespace NzbDrone.Core.ImportLists.Spotify
                     }
                 }
             }
+
+            var unmappedAlbum = items.Count(x => x.AlbumMusicBrainzId == "0");
+            var unmappedArtist = items.Count(x => x.AlbumMusicBrainzId != "0" && x.ArtistMusicBrainzId == "0");
+            var noAlbumId = items.Count(x => x.AlbumMusicBrainzId.IsNullOrWhiteSpace() && x.AlbumMusicBrainzId != "0");
+
+            _logger.Info("Spotify->MusicBrainz mapping: {0} in, {1} dropped (album not in mapping table), {2} dropped (artist not in mapping table), {3} left with no album id",
+                items.Count, unmappedAlbum, unmappedArtist, noAlbumId);
 
             // Strip out items where mapped to not found
             return items.Where(x => x.AlbumMusicBrainzId != "0" && x.ArtistMusicBrainzId != "0").ToList();
