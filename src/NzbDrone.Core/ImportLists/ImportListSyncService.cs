@@ -221,6 +221,9 @@ namespace NzbDrone.Core.ImportLists
         {
             if (report.AlbumMusicBrainzId.IsNullOrWhiteSpace() || report.ArtistMusicBrainzId.IsNullOrWhiteSpace())
             {
+                // Neither the id mapping nor the name lookup resolved this one, so it is
+                // silently absent from the library - name it rather than just counting it.
+                _logger.Info("List item [{0}] by [{1}] could not be resolved to a MusicBrainz album, skipping", report.Album, report.Artist);
                 return;
             }
 
