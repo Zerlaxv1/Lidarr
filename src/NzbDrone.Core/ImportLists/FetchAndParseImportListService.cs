@@ -86,7 +86,9 @@ namespace NzbDrone.Core.ImportLists
 
             Task.WaitAll(taskList.ToArray());
 
-            result = result.DistinctBy(r => new { r.Artist, r.Album, r.ArtistMusicBrainzId, r.AlbumMusicBrainzId }).ToList();
+            // TrackTitle is part of the key so song-mode lists keep every track of an album;
+            // it is null for album/artist lists, which dedupe exactly as before.
+            result = result.DistinctBy(r => new { r.Artist, r.Album, r.ArtistMusicBrainzId, r.AlbumMusicBrainzId, r.TrackTitle }).ToList();
 
             _logger.Debug("Found {0} total reports from {1} lists", result.Count, importLists.Count);
 
@@ -135,7 +137,9 @@ namespace NzbDrone.Core.ImportLists
 
             Task.WaitAll(taskList.ToArray());
 
-            result = result.DistinctBy(r => new { r.Artist, r.Album, r.ArtistMusicBrainzId, r.AlbumMusicBrainzId }).ToList();
+            // TrackTitle is part of the key so song-mode lists keep every track of an album;
+            // it is null for album/artist lists, which dedupe exactly as before.
+            result = result.DistinctBy(r => new { r.Artist, r.Album, r.ArtistMusicBrainzId, r.AlbumMusicBrainzId, r.TrackTitle }).ToList();
 
             return result;
         }
