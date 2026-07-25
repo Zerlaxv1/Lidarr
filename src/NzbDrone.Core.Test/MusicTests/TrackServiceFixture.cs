@@ -244,6 +244,46 @@ namespace NzbDrone.Core.Test.MusicTests
             tracks.Single().Monitored.Should().BeTrue();
         }
 
+        // Real mismatches observed syncing a 231-track Spotify playlist.
+        [TestCase("Another Brick in the Wall, Pt. 2", "Another Brick in the Wall, Part 2")]
+        [TestCase("ピースサイン - Peace Sign", "Peace Sign")]
+        [TestCase("Lovefool", "Lovefool = ラヴフール")]
+        [TestCase("3005", "V. 3005")]
+        [TestCase("Wild Side", "Wild Side -Anime ver.-")]
+        public void should_match_titles_the_two_sources_spell_differently(string listTitle, string trackTitle)
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = trackTitle, Monitored = false }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { listTitle });
+
+            result.Should().ContainSingle(t => t.Id == 1);
+        }
+
+        [Test]
+        public void should_not_match_unrelated_tracks_on_the_same_album()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "Mother", Monitored = false },
+                new Track { Id = 2, Title = "Hey You", Monitored = false }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Another Brick in the Wall, Pt. 2" });
+
+            result.Should().BeEmpty();
+        }
+
         [Test]
         public void should_prefer_the_exact_title_over_a_suffix_stripped_one()
         {

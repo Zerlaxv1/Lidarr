@@ -235,18 +235,69 @@ namespace NzbDrone.Core.Music
 
             if (unmatched.Any())
             {
-                var relaxed = new HashSet<string>(unmatched.Select(NormalizeTrackTitleRelaxed));
+                var relaxed = new HashSet<string>(unmatched.SelectMany(TitleMatchVariants));
 
-                matched.AddRange(tracks.Where(t => !matched.Contains(t) && relaxed.Contains(NormalizeTrackTitleRelaxed(t.Title))));
+                matched.AddRange(tracks.Where(t => !matched.Contains(t) && TitleMatchVariants(t.Title).Any(relaxed.Contains)));
             }
 
             return matched;
         }
 
-        private static string NormalizeTrackTitleRelaxed(string title)
+        // The same track is spelled differently by each source: "Pt. 2" against "Part 2",
+        // a Japanese pressing appending "= <katakana>", a track index like "V. 3005", a
+        // "-Anime ver.-" suffix, or a dual-script title where only one side is stored.
+        // Reduce a title to the forms it could legitimately be written as.
+        private static IEnumerable<string> TitleMatchVariants(string title)
         {
-            return NormalizeTrackTitleForMatch(StripEditorialSuffix(title));
+            if (title.IsNullOrWhiteSpace())
+            {
+                yield break;
+            }
+
+            var cleaned = StripEditorialSuffix(title);
+            cleaned = DashedVersionRegex.Replace(cleaned, string.Empty);
+            cleaned = AlternateTitleRegex.Replace(cleaned, string.Empty);
+            cleaned = LeadingIndexRegex.Replace(cleaned, string.Empty);
+            cleaned = PartAbbreviationRegex.Replace(cleaned, "Part");
+
+            var normalized = NormalizeTrackTitleForMatch(cleaned);
+
+            if (normalized.IsNotNullOrWhiteSpace())
+            {
+                yield return normalized;
+            }
+
+            // "ピースサイン - Peace Sign" is stored under either side alone.
+            if (cleaned.Contains(" - "))
+            {
+                foreach (var half in cleaned.Split(new[] { " - " }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var normalizedHalf = NormalizeTrackTitleForMatch(half);
+
+                    if (normalizedHalf.IsNotNullOrWhiteSpace())
+                    {
+                        yield return normalizedHalf;
+                    }
+                }
+            }
         }
+
+        // "Pt. 2" / "Pt 2" -> "Part 2"
+        private static readonly Regex PartAbbreviationRegex = new Regex(
+            @"\bPt\.?(?=\s)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // Japanese pressings append the transliteration: "Lovefool = ラヴフール"
+        private static readonly Regex AlternateTitleRegex = new Regex(
+            @"\s*=\s*\S.*$", RegexOptions.Compiled);
+
+        // Track index prefixes on conceptual albums: "V. 3005"
+        private static readonly Regex LeadingIndexRegex = new Regex(
+            @"^\s*[IVX]+\.\s+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // Dash-wrapped version markers: "Wild Side -Anime ver.-"
+        private static readonly Regex DashedVersionRegex = new Regex(
+            @"\s*-[^-]*\b(?:ver|version|mix|edit|remix|size)\b\.?[^-]*-\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static string StripEditorialSuffix(string title)
         {
