@@ -110,6 +110,42 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         }
 
         [Test]
+        public void should_allow_a_different_track_of_an_album_already_downloading()
+        {
+            _remoteAlbum.Tracks = new List<Track> { new Track { Id = 7 } };
+
+            var queued = Builder<RemoteAlbum>.CreateNew()
+                .With(r => r.Artist = _artist)
+                .With(r => r.Albums = new List<Album> { _album })
+                .With(r => r.Tracks = new List<Track> { new Track { Id = 3 } })
+                .With(r => r.ParsedAlbumInfo = new ParsedAlbumInfo { Quality = new QualityModel(Quality.FLAC) })
+                .With(r => r.Release = _releaseInfo)
+                .Build();
+
+            GivenQueue(new List<RemoteAlbum> { queued });
+
+            Subject.IsSatisfiedBy(_remoteAlbum, null).Accepted.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_still_reject_the_same_track_already_downloading()
+        {
+            _remoteAlbum.Tracks = new List<Track> { new Track { Id = 3 } };
+
+            var queued = Builder<RemoteAlbum>.CreateNew()
+                .With(r => r.Artist = _artist)
+                .With(r => r.Albums = new List<Album> { _album })
+                .With(r => r.Tracks = new List<Track> { new Track { Id = 3 } })
+                .With(r => r.ParsedAlbumInfo = new ParsedAlbumInfo { Quality = new QualityModel(Quality.FLAC) })
+                .With(r => r.Release = _releaseInfo)
+                .Build();
+
+            GivenQueue(new List<RemoteAlbum> { queued });
+
+            Subject.IsSatisfiedBy(_remoteAlbum, null).Accepted.Should().BeFalse();
+        }
+
+        [Test]
         public void should_return_true_when_artist_doesnt_match()
         {
             var remoteAlbum = Builder<RemoteAlbum>.CreateNew()

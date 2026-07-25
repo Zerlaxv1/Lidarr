@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
@@ -57,13 +56,11 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                     continue;
                 }
 
-                // Two tracks of one album are two independent grabs in song mode, but the
-                // queue only records albums, so matching on the album alone made the second
-                // track wait for the first to finish. A queue item carries no track, so the
-                // closest available comparison is the release itself: block a genuine
-                // duplicate, let a different release through.
-                if (searchCriteria is TrackSearchCriteria &&
-                    !remoteAlbum.Release.Title.Equals(subject.Release.Title, StringComparison.InvariantCultureIgnoreCase))
+                // Two tracks of one album are two independent grabs in song mode, so an
+                // album-level match made the second track wait for the first to import.
+                // Both sides now carry their tracks, so compare those when they are known.
+                if (subject.Tracks.Any() && remoteAlbum.Tracks.Any() &&
+                    !remoteAlbum.Tracks.Select(t => t.Id).Intersect(subject.Tracks.Select(t => t.Id)).Any())
                 {
                     continue;
                 }
