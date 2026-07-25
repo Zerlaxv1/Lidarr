@@ -33,6 +33,57 @@ namespace NzbDrone.Core.Test.MusicTests.AlbumRepositoryTests
                 .Returns(_albums);
         }
 
+        private void GivenAlbumWithTracks(int albumId, params bool[] monitoredFlags)
+        {
+            var tracks = new List<Track>();
+
+            for (var i = 0; i < monitoredFlags.Length; i++)
+            {
+                tracks.Add(new Track { Id = i + 1, Monitored = monitoredFlags[i] });
+            }
+
+            Mocker.GetMock<IAlbumRepository>()
+                .Setup(s => s.Get(albumId))
+                .Returns(new Album { Id = albumId });
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(s => s.GetTracksByAlbum(albumId))
+                .Returns(tracks);
+        }
+
+        [Test]
+        public void should_not_cascade_monitored_over_an_individual_track_selection()
+        {
+            GivenAlbumWithTracks(7, false, true, false);
+
+            Subject.SetAlbumMonitored(7, true);
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(s => s.SetMonitored(It.IsAny<IEnumerable<int>>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [Test]
+        public void should_cascade_monitored_when_no_track_is_selected()
+        {
+            GivenAlbumWithTracks(7, false, false);
+
+            Subject.SetAlbumMonitored(7, true);
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(s => s.SetMonitored(It.IsAny<IEnumerable<int>>(), true), Times.Once());
+        }
+
+        [Test]
+        public void should_always_cascade_unmonitored()
+        {
+            GivenAlbumWithTracks(7, true, false);
+
+            Subject.SetAlbumMonitored(7, false);
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(s => s.SetMonitored(It.IsAny<IEnumerable<int>>(), false), Times.Once());
+        }
+
         private void GivenSimilarAlbum()
         {
             _albums.Add(new Album

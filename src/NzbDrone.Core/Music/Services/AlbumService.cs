@@ -314,12 +314,24 @@ namespace NzbDrone.Core.Music
 
         private void SetTracksMonitored(int albumId, bool monitored)
         {
-            var trackIds = _trackService.GetTracksByAlbum(albumId).Select(t => t.Id).ToList();
+            var tracks = _trackService.GetTracksByAlbum(albumId);
 
-            if (trackIds.Any())
+            if (tracks.Empty())
             {
-                _trackService.SetMonitored(trackIds, monitored);
+                return;
             }
+
+            // Monitoring an album whose tracks were picked individually must not turn the
+            // whole album on: that selection IS what the user wants, and cascading over it
+            // makes every track wanted again. An album with nothing selected still cascades,
+            // which is the album-mode default, and unmonitoring always cascades so an
+            // unmonitored album never leaves monitored tracks behind.
+            if (monitored && tracks.Any(t => t.Monitored))
+            {
+                return;
+            }
+
+            _trackService.SetMonitored(tracks.Select(t => t.Id).ToList(), monitored);
         }
 
         public void UpdateLastSearchTime(List<Album> albums)
