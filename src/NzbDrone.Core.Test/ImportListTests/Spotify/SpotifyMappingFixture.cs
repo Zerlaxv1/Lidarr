@@ -249,7 +249,7 @@ namespace NzbDrone.Core.Test.ImportListTests
         }
 
         [Test]
-        public void map_spotify_releases_should_drop_not_found()
+        public void map_spotify_releases_should_keep_not_found_for_name_lookup()
         {
             var data = new List<SpotifyImportListItemInfo>
             {
@@ -274,8 +274,11 @@ namespace NzbDrone.Core.Test.ImportListTests
                 .Setup(x => x.Post<List<SpotifyMap>>(It.IsAny<HttpRequest>()))
                 .Returns<HttpRequest>(r => new HttpResponse<List<SpotifyMap>>(new HttpResponse(r, new HttpHeader(), map.ToJson())));
 
+            // "0" only means the mapping table has no entry for that Spotify id. The item is
+            // kept with the sentinel cleared so the sync can still resolve it by name.
             var result = Subject.MapSpotifyReleases(data);
-            result.Should().BeEmpty();
+            result.Should().HaveCount(1);
+            result[0].AlbumMusicBrainzId.Should().BeNull();
         }
 
         [Test]

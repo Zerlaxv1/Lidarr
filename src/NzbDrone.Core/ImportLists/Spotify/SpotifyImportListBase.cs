@@ -210,15 +210,30 @@ namespace NzbDrone.Core.ImportLists.Spotify
                 }
             }
 
+            // "0" means the Spotify -> MusicBrainz mapping table holds no entry for that id,
+            // which is not the same as the album being absent from MusicBrainz. Clear the
+            // sentinel instead of discarding the item so ImportListSyncService still gets to
+            // resolve it by artist and album name; whatever it cannot resolve is skipped there.
             var unmappedAlbum = items.Count(x => x.AlbumMusicBrainzId == "0");
             var unmappedArtist = items.Count(x => x.AlbumMusicBrainzId != "0" && x.ArtistMusicBrainzId == "0");
-            var noAlbumId = items.Count(x => x.AlbumMusicBrainzId.IsNullOrWhiteSpace() && x.AlbumMusicBrainzId != "0");
 
-            _logger.Info("Spotify->MusicBrainz mapping: {0} in, {1} dropped (album not in mapping table), {2} dropped (artist not in mapping table), {3} left with no album id",
-                items.Count, unmappedAlbum, unmappedArtist, noAlbumId);
+            foreach (var item in items)
+            {
+                if (item.AlbumMusicBrainzId == "0")
+                {
+                    item.AlbumMusicBrainzId = null;
+                }
 
-            // Strip out items where mapped to not found
-            return items.Where(x => x.AlbumMusicBrainzId != "0" && x.ArtistMusicBrainzId != "0").ToList();
+                if (item.ArtistMusicBrainzId == "0")
+                {
+                    item.ArtistMusicBrainzId = null;
+                }
+            }
+
+            _logger.Info("Spotify->MusicBrainz mapping: {0} in, {1} album ids and {2} artist ids absent from the mapping table (left for name lookup)",
+                items.Count, unmappedAlbum, unmappedArtist);
+
+            return items;
         }
 
         public void MapArtistItem(SpotifyImportListItemInfo item)
