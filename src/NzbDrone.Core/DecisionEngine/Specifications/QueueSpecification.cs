@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
@@ -52,6 +53,17 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 // Failed items (already searching for a replacement) won't be part of the queue since
                 // it's a copy, of the tracked download, not a reference.
                 if (queueItem.TrackedDownloadState == TrackedDownloadState.DownloadFailedPending)
+                {
+                    continue;
+                }
+
+                // Two tracks of one album are two independent grabs in song mode, but the
+                // queue only records albums, so matching on the album alone made the second
+                // track wait for the first to finish. A queue item carries no track, so the
+                // closest available comparison is the release itself: block a genuine
+                // duplicate, let a different release through.
+                if (searchCriteria is TrackSearchCriteria &&
+                    !remoteAlbum.Release.Title.Equals(subject.Release.Title, StringComparison.InvariantCultureIgnoreCase))
                 {
                     continue;
                 }
