@@ -93,9 +93,14 @@ namespace NzbDrone.Core.Music
             child.AlbumRelease = entity;
             child.ArtistMetadataId = child.ArtistMetadata.Value.Id;
 
-            // new tracks from metadata inherit the album's monitored flag
-            // (C# default false would make every new album invisible to song mode)
-            child.Monitored = entity.Album?.Value?.Monitored ?? true;
+            // New tracks from metadata inherit the album's monitored flag (C# default false
+            // would make every new album invisible to song mode) - but not when the album's
+            // tracks were picked individually, or MusicBrainz adding a track later would
+            // silently make it wanted alongside the one the user actually chose.
+            var albumMonitored = entity.Album?.Value?.Monitored ?? true;
+            var siblings = entity.Tracks?.Value;
+
+            child.Monitored = albumMonitored && (siblings == null || siblings.Count == 0 || siblings.All(t => t.Monitored));
 
             // make sure title is not null
             child.Title = child.Title ?? "Unknown";

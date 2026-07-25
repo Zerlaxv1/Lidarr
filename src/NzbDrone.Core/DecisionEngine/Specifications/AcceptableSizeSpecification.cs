@@ -35,8 +35,24 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
             var qualityDefinition = _qualityDefinitionService.Get(quality);
 
-            var minReleaseDuration = subject.Albums.Select(a => a.AlbumReleases.Value.Where(r => r.Monitored || a.AnyReleaseOk).Select(r => r.Duration).MinOrDefault()).Sum() / 1000;
-            var maxReleaseDuration = subject.Albums.Select(a => a.AlbumReleases.Value.Where(r => r.Monitored || a.AnyReleaseOk).Select(r => r.Duration).MaxOrDefault()).Sum() / 1000;
+            long minReleaseDuration;
+            long maxReleaseDuration;
+
+            if (subject.Tracks.Any())
+            {
+                // A single-track grab is judged against the track's own length: measuring it
+                // against a 45 minute album makes every one of them "smaller than minimum
+                // allowed" for anyone who set a MinSize above zero.
+                var trackDuration = subject.Tracks.Sum(t => (long)t.Duration) / 1000;
+
+                minReleaseDuration = trackDuration;
+                maxReleaseDuration = trackDuration;
+            }
+            else
+            {
+                minReleaseDuration = subject.Albums.Select(a => a.AlbumReleases.Value.Where(r => r.Monitored || a.AnyReleaseOk).Select(r => r.Duration).MinOrDefault()).Sum() / 1000;
+                maxReleaseDuration = subject.Albums.Select(a => a.AlbumReleases.Value.Where(r => r.Monitored || a.AnyReleaseOk).Select(r => r.Duration).MaxOrDefault()).Sum() / 1000;
+            }
 
             if (qualityDefinition.MinSize.HasValue)
             {
