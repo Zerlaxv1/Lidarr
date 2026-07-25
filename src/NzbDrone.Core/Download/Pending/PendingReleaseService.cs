@@ -297,7 +297,8 @@ namespace NzbDrone.Core.Download.Pending
                     Artist = artist,
                     ReleaseSource = release.AdditionalInfo?.ReleaseSource ?? ReleaseSourceType.Unknown,
                     ParsedAlbumInfo = release.ParsedAlbumInfo,
-                    Release = release.Release
+                    Release = release.Release,
+                    Tracks = release.AdditionalInfo?.TrackIds?.Select(id => new Track { Id = id }).ToList() ?? new List<Track>()
                 };
 
                 if (knownRemoteAlbums != null && knownRemoteAlbums.TryGetValue(release.Release.Title, out var knownRemoteAlbum))
@@ -393,7 +394,8 @@ namespace NzbDrone.Core.Download.Pending
                 Reason = reason,
                 AdditionalInfo = new PendingReleaseAdditionalInfo
                 {
-                    ReleaseSource = decision.RemoteAlbum.ReleaseSource
+                    ReleaseSource = decision.RemoteAlbum.ReleaseSource,
+                    TrackIds = decision.RemoteAlbum.Tracks?.Select(t => t.Id).ToList()
                 }
             });
 
@@ -434,6 +436,14 @@ namespace NzbDrone.Core.Download.Pending
 
             foreach (var existingReport in existingReports)
             {
+                // Grabbing one track must not discard another track's pending release just
+                // because the two share an album.
+                if (remoteAlbum.Tracks.Any() && existingReport.RemoteAlbum.Tracks.Any() &&
+                    !remoteAlbum.Tracks.Select(t => t.Id).Intersect(existingReport.RemoteAlbum.Tracks.Select(t => t.Id)).Any())
+                {
+                    continue;
+                }
+
                 var compare = new QualityModelComparer(profile).Compare(remoteAlbum.ParsedAlbumInfo.Quality,
                                                                         existingReport.RemoteAlbum.ParsedAlbumInfo.Quality);
 
