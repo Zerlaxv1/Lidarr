@@ -8,6 +8,7 @@ using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.MusicBrainz;
 using NzbDrone.Core.Music;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
@@ -178,6 +179,36 @@ namespace NzbDrone.Core.Test.ImportListTests
 
             Mocker.GetMock<ISearchForNewAlbum>()
                 .Verify(v => v.SearchForNewAlbum(It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+        }
+
+        [Test]
+        public void should_resolve_an_album_through_aliases_when_the_name_search_finds_nothing()
+        {
+            WithAlbum();
+
+            Mocker.GetMock<IResolveAlbumByAlias>()
+                .Setup(v => v.FindReleaseGroupId(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns("09474d62-17dd-3a4f-98fb-04c65f38a479");
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<ISearchForNewAlbum>()
+                .Verify(v => v.SearchForNewAlbum("lidarr:09474d62-17dd-3a4f-98fb-04c65f38a479", It.IsAny<string>()), Times.Once());
+        }
+
+        [Test]
+        public void should_not_reach_for_aliases_when_the_name_search_matched()
+        {
+            WithAlbum();
+
+            Mocker.GetMock<ISearchForNewAlbum>()
+                .Setup(v => v.SearchForNewAlbum(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(new List<Album> { new Album { ForeignAlbumId = "09474d62-17dd-3a4f-98fb-04c65f38a479", Title = "Meteora" } });
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IResolveAlbumByAlias>()
+                .Verify(v => v.FindReleaseGroupId(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
         }
 
         [Test]

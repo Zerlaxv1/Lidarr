@@ -10,6 +10,7 @@ using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.MusicBrainz;
 using NzbDrone.Core.Music;
 using NzbDrone.Core.Music.Commands;
 using NzbDrone.Core.Parser.Model;
@@ -22,6 +23,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly IImportListExclusionService _importListExclusionService;
         private readonly IFetchAndParseImportList _listFetcherAndParser;
         private readonly ISearchForNewAlbum _albumSearchService;
+        private readonly IResolveAlbumByAlias _albumAliasResolver;
         private readonly ISearchForNewArtist _artistSearchService;
         private readonly IArtistService _artistService;
         private readonly IAlbumService _albumService;
@@ -36,6 +38,7 @@ namespace NzbDrone.Core.ImportLists
                                      IImportListExclusionService importListExclusionService,
                                      IFetchAndParseImportList listFetcherAndParser,
                                      ISearchForNewAlbum albumSearchService,
+                                     IResolveAlbumByAlias albumAliasResolver,
                                      ISearchForNewArtist artistSearchService,
                                      IArtistService artistService,
                                      IAlbumService albumService,
@@ -50,6 +53,7 @@ namespace NzbDrone.Core.ImportLists
             _importListExclusionService = importListExclusionService;
             _listFetcherAndParser = listFetcherAndParser;
             _albumSearchService = albumSearchService;
+            _albumAliasResolver = albumAliasResolver;
             _artistSearchService = artistSearchService;
             _artistService = artistService;
             _albumService = albumService;
@@ -203,6 +207,27 @@ namespace NzbDrone.Core.ImportLists
                 // A flaky metadata server must not abort the whole sync; skip this item only.
                 _logger.Warn(ex, "Lookup failed for album [{0}] by [{1}], skipping item", albumQuery, report.Artist);
                 return;
+            }
+
+            // The name search compares against the titles MusicBrainz stores, so a list
+            // naming things in another script finds nothing. Resolve it through the
+            // aliases before giving up.
+            if (mappedAlbum == null && report.AlbumMusicBrainzId.IsNullOrWhiteSpace())
+            {
+                var releaseGroupId = _albumAliasResolver.FindReleaseGroupId(report.Album, report.Artist);
+
+                if (releaseGroupId.IsNotNullOrWhiteSpace())
+                {
+                    try
+                    {
+                        mappedAlbum = _albumSearchService.SearchForNewAlbum($"lidarr:{releaseGroupId}", report.Artist).FirstOrDefault();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn(ex, "Lookup failed for album [{0}] by [{1}], skipping item", releaseGroupId, report.Artist);
+                        return;
+                    }
+                }
             }
 
             // Break if we are looking for an album and cant find it. This will avoid us from adding the artist and possibly getting it wrong.
