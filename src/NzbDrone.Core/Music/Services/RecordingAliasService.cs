@@ -48,7 +48,23 @@ namespace NzbDrone.Core.Music
                 return new Dictionary<string, List<string>>();
             }
 
-            return _cache.Get(release.ForeignReleaseId, () => Fetch(release.ForeignReleaseId), TimeSpan.FromHours(24));
+            var cached = _cache.Find(release.ForeignReleaseId);
+
+            if (cached != null)
+            {
+                return cached;
+            }
+
+            var fetched = Fetch(release.ForeignReleaseId);
+
+            // Only a real answer is worth keeping: caching the empty result of a throttled
+            // request would suppress every match for this release for a whole day.
+            if (fetched != null)
+            {
+                _cache.Set(release.ForeignReleaseId, fetched, TimeSpan.FromHours(24));
+            }
+
+            return fetched ?? new Dictionary<string, List<string>>();
         }
 
         private Dictionary<string, List<string>> Fetch(string foreignReleaseId)
@@ -62,7 +78,7 @@ namespace NzbDrone.Core.Music
                     .AddQueryParam("inc", "aliases")
                     .AddQueryParam("fmt", "json")
                     .AddQueryParam("limit", "100")
-                    .WithRateLimit(1.0)
+                    .WithRateLimit(1.5)
                     .Build();
 
                 var response = _httpClient.Get<RecordingBrowseResource>(request);
@@ -87,8 +103,10 @@ namespace NzbDrone.Core.Music
             }
             catch (Exception ex)
             {
-                // Aliases only ever add matches, so a MusicBrainz outage must not break the sync.
-                _logger.Debug(ex, "Could not fetch recording aliases for release {0}", foreignReleaseId);
+                // Aliases only ever add matches, so a MusicBrainz outage must not break the
+                // sync - but say so, because the sync then silently monitors fewer tracks.
+                _logger.Warn(ex, "Could not fetch recording aliases for release {0}, some tracks may not be matched", foreignReleaseId);
+                return null;
             }
 
             return result;
