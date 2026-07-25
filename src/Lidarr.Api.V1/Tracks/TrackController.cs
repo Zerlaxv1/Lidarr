@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Music;
+using NzbDrone.Core.Music.Events;
 using NzbDrone.SignalR;
 
 namespace Lidarr.Api.V1.Tracks
@@ -15,13 +17,20 @@ namespace Lidarr.Api.V1.Tracks
     [V1ApiController]
     public class TrackController : TrackControllerWithSignalR
     {
+        private readonly IAlbumService _albumService;
+        private readonly IEventAggregator _eventAggregator;
+
         public TrackController(IArtistService artistService,
                              ITrackService trackService,
+                             IAlbumService albumService,
                              IUpgradableSpecification upgradableSpecification,
                              ICustomFormatCalculationService formatCalculator,
+                             IEventAggregator eventAggregator,
                              IBroadcastSignalRMessage signalRBroadcaster)
             : base(trackService, artistService, upgradableSpecification, formatCalculator, signalRBroadcaster)
         {
+            _albumService = albumService;
+            _eventAggregator = eventAggregator;
         }
 
         [HttpGet]
@@ -76,7 +85,19 @@ namespace Lidarr.Api.V1.Tracks
         public IActionResult SetTracksMonitored([FromBody] TracksMonitoredResource resource)
         {
             _trackService.SetMonitored(resource.TrackIds, resource.Monitored);
-            return Accepted(MapToResource(_trackService.GetTracks(resource.TrackIds), false, false));
+
+            var tracks = _trackService.GetTracks(resource.TrackIds);
+
+            // Track counts and completion percentages are cached per artist and only
+            // invalidated by album-level events, so without this the sidebar keeps showing
+            // the pre-toggle numbers until the next artist refresh.
+            foreach (var albumId in tracks.Select(t => t.AlbumId).Where(id => id > 0).Distinct())
+            {
+                var album = _albumService.GetAlbum(albumId);
+                _eventAggregator.PublishEvent(new AlbumEditedEvent(album, album));
+            }
+
+            return Accepted(MapToResource(tracks, false, false));
         }
     }
 }
