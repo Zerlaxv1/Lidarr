@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Music
         private readonly IProvideAlbumInfo _albumInfo;
         private readonly IRefreshAlbumReleaseService _refreshAlbumReleaseService;
         private readonly IMediaFileService _mediaFileService;
+        private readonly ITrackService _trackService;
         private readonly IHistoryService _historyService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
@@ -49,6 +50,7 @@ namespace NzbDrone.Core.Music
                                    IProvideAlbumInfo albumInfo,
                                    IRefreshAlbumReleaseService refreshAlbumReleaseService,
                                    IMediaFileService mediaFileService,
+                                   ITrackService trackService,
                                    IHistoryService historyService,
                                    IEventAggregator eventAggregator,
                                    IManageCommandQueue commandQueueManager,
@@ -65,6 +67,7 @@ namespace NzbDrone.Core.Music
             _albumInfo = albumInfo;
             _refreshAlbumReleaseService = refreshAlbumReleaseService;
             _mediaFileService = mediaFileService;
+            _trackService = trackService;
             _historyService = historyService;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
@@ -306,13 +309,29 @@ namespace NzbDrone.Core.Music
         {
             var refreshList = localChildren.All;
 
+            var previouslyMonitored = refreshList.FirstOrDefault(x => x.Monitored);
+
             // make sure only one of the releases ends up monitored
             localChildren.Old.ForEach(x => x.Monitored = false);
             MonitorSingleRelease(localChildren.Future);
 
             refreshList.ForEach(x => _logger.Trace($"release: {x} monitored: {x.Monitored}"));
 
-            return _refreshAlbumReleaseService.RefreshEntityInfo(refreshList, remoteChildren, forceChildRefresh, forceUpdateFileTags);
+            var updated = _refreshAlbumReleaseService.RefreshEntityInfo(refreshList, remoteChildren, forceChildRefresh, forceUpdateFileTags);
+
+            // A refresh can prefer a different release, and the tracks of the new one are
+            // created from the album's own monitored flag - so an individually picked track
+            // (and its file link) simply disappears. Same relink ImportApprovedTracks does
+            // when an import switches release.
+            var nowMonitored = refreshList.FirstOrDefault(x => x.Monitored);
+
+            if (nowMonitored != null && previouslyMonitored != null && nowMonitored.Id != previouslyMonitored.Id)
+            {
+                _logger.Debug("Monitored release for album {0} changed on refresh, relinking tracks", nowMonitored.AlbumId);
+                _trackService.RelinkTrackFilesToRelease(nowMonitored, new List<AlbumRelease> { previouslyMonitored });
+            }
+
+            return updated;
         }
 
         protected override void PublishEntityUpdatedEvent(Album entity)
