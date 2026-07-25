@@ -267,6 +267,52 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_match_a_romanized_title_through_the_recording_alias()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "やめるなら今", AlbumReleaseId = 9, ForeignRecordingId = "rec-1", Monitored = false },
+                new Track { Id = 2, Title = "悪魔の子", AlbumReleaseId = 9, ForeignRecordingId = "rec-2", Monitored = false }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            Mocker.GetMock<IProvideRecordingAliases>()
+                .Setup(s => s.GetAliases(9))
+                .Returns(new Dictionary<string, List<string>>
+                {
+                    { "rec-1", new List<string> { "Yamerunara Ima" } },
+                    { "rec-2", new List<string> { "Akuma no Ko" } }
+                });
+
+            var result = Subject.SetMonitoredByTitle(5, new List<string> { "Akuma no Ko" });
+
+            result.Should().ContainSingle(t => t.Id == 2);
+            tracks.Single(t => t.Id == 2).Monitored.Should().BeTrue();
+            tracks.Single(t => t.Id == 1).Monitored.Should().BeFalse();
+        }
+
+        [Test]
+        public void should_not_ask_for_aliases_when_every_title_matched()
+        {
+            var tracks = new List<Track>
+            {
+                new Track { Id = 1, Title = "Bliss", AlbumReleaseId = 9, ForeignRecordingId = "rec-1", Monitored = false }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByAlbum(5))
+                .Returns(tracks);
+
+            Subject.SetMonitoredByTitle(5, new List<string> { "Bliss" });
+
+            Mocker.GetMock<IProvideRecordingAliases>()
+                .Verify(s => s.GetAliases(It.IsAny<int>()), Times.Never());
+        }
+
+        [Test]
         public void should_not_match_unrelated_tracks_on_the_same_album()
         {
             var tracks = new List<Track>

@@ -42,12 +42,15 @@ namespace NzbDrone.Core.Music
                                 IHandle<TrackFileDeletedEvent>
     {
         private readonly ITrackRepository _trackRepository;
+        private readonly IProvideRecordingAliases _recordingAliasService;
         private readonly Logger _logger;
 
         public TrackService(ITrackRepository trackRepository,
+                            IProvideRecordingAliases recordingAliasService,
                             Logger logger)
         {
             _trackRepository = trackRepository;
+            _recordingAliasService = recordingAliasService;
             _logger = logger;
         }
 
@@ -207,8 +210,11 @@ namespace NzbDrone.Core.Music
 
         public List<Track> SetMonitoredByTitle(int albumId, IEnumerable<string> titles)
         {
+            var titleList = titles.ToList();
             var tracks = _trackRepository.GetTracksByAlbum(albumId);
-            var matched = MatchTracksByTitle(tracks, titles);
+            var matched = MatchTracksByTitle(tracks, titleList);
+
+            matched.AddRange(MatchByRecordingAlias(tracks, titleList, matched));
 
             foreach (var track in tracks)
             {
@@ -218,6 +224,35 @@ namespace NzbDrone.Core.Music
             _trackRepository.UpdateMany(tracks);
 
             return matched;
+        }
+
+        // Last resort for a list that writes titles in another script than MusicBrainz
+        // stores them ("Akuma no Ko" against 悪魔の子): ask MusicBrainz for the aliases of
+        // this release's recordings and match on those. Costs one request per album and
+        // only runs when a title matched no track by any spelling.
+        private List<Track> MatchByRecordingAlias(List<Track> tracks, List<string> titles, List<Track> alreadyMatched)
+        {
+            var unmatched = titles.Where(t => !alreadyMatched.Any(m => NormalizeTrackTitleForMatch(m.Title) == NormalizeTrackTitleForMatch(t))).ToList();
+
+            var candidates = tracks.Where(t => !alreadyMatched.Contains(t) && t.ForeignRecordingId.IsNotNullOrWhiteSpace()).ToList();
+
+            if (unmatched.Empty() || candidates.Empty())
+            {
+                return new List<Track>();
+            }
+
+            var wanted = new HashSet<string>(unmatched.Select(NormalizeTrackTitleForMatch));
+            var aliases = _recordingAliasService.GetAliases(candidates.First().AlbumReleaseId);
+
+            if (aliases.Empty())
+            {
+                return new List<Track>();
+            }
+
+            return candidates
+                .Where(t => aliases.TryGetValue(t.ForeignRecordingId, out var names)
+                            && names.Any(n => wanted.Contains(NormalizeTrackTitleForMatch(n))))
+                .ToList();
         }
 
         // Streaming services decorate track titles with editorial suffixes MusicBrainz does
