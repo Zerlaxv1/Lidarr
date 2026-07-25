@@ -97,6 +97,9 @@ namespace NzbDrone.Core.ImportLists.Spotify
                     }
                     else
                     {
+                        // The refreshed token was rejected too, so don't let it sit there
+                        // looking valid until its stated expiry.
+                        list.ExpireToken();
                         throw new SpotifyAuthorizationException(result.Error.Message);
                     }
                 }

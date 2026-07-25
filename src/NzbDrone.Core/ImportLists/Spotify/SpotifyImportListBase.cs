@@ -61,24 +61,41 @@ namespace NzbDrone.Core.ImportLists.Spotify
 
             try
             {
-                var response = _httpClient.Get<Token>(request);
+                var token = _httpClient.Get<Token>(request)?.Resource;
 
-                if (response != null && response.Resource != null)
+                // Storing a token the renewal never returned would still push Expires an
+                // hour ahead, and GetApi then skips every renewal for that hour while each
+                // sync fails with an authorization error. Only a usable token counts.
+                if (token == null || token.AccessToken.IsNullOrWhiteSpace() || token.ExpiresIn <= 0)
                 {
-                    var token = response.Resource;
-                    Settings.AccessToken = token.AccessToken;
-                    Settings.Expires = DateTime.UtcNow.AddSeconds(token.ExpiresIn);
-                    Settings.RefreshToken = token.RefreshToken != null ? token.RefreshToken : Settings.RefreshToken;
+                    _logger.Warn("Spotify token renewal returned no usable token, re-authenticate the list");
+                    return;
+                }
 
-                    if (Definition.Id > 0)
-                    {
-                        _importListRepository.UpdateSettings((ImportListDefinition)Definition);
-                    }
+                Settings.AccessToken = token.AccessToken;
+                Settings.Expires = DateTime.UtcNow.AddSeconds(token.ExpiresIn);
+                Settings.RefreshToken = token.RefreshToken ?? Settings.RefreshToken;
+
+                if (Definition.Id > 0)
+                {
+                    _importListRepository.UpdateSettings((ImportListDefinition)Definition);
                 }
             }
             catch (HttpException)
             {
                 _logger.Warn($"Error refreshing spotify access token");
+            }
+        }
+
+        // A token Spotify rejects must not stay nominally valid, or GetApi trusts it until
+        // its stated expiry and every sync in between fails the same way.
+        public void ExpireToken()
+        {
+            Settings.Expires = DateTime.UtcNow;
+
+            if (Definition.Id > 0)
+            {
+                _importListRepository.UpdateSettings((ImportListDefinition)Definition);
             }
         }
 
