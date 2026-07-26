@@ -73,8 +73,11 @@
     <Company>lidarr.audio</Company>
     <Copyright>Copyright 2017-$([System.DateTime]::Now.ToString('yyyy')) lidarr.audio (GNU General Public v3)</Copyright>
 
-    <!-- Should be replaced by CI -->
-    <AssemblyVersion>10.0.0.*</AssemblyVersion>
+    <!-- Fixed rather than upstream's 10.0.0.* wildcard, which derives the revision from the
+         build clock: two builds of the same commit then carry different assembly versions, and
+         a plugin compiled against one silently refuses to load in the other. CI can still pass
+         -p:AssemblyVersion=x.y.z.w, which wins over this as a global property. -->
+    <AssemblyVersion>10.0.0.0</AssemblyVersion>
     <AssemblyConfiguration>$(Configuration)-dev</AssemblyConfiguration>
     <NeutralLanguage>en</NeutralLanguage>
 
