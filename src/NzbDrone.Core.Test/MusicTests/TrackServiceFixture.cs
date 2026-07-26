@@ -45,8 +45,44 @@ namespace NzbDrone.Core.Test.MusicTests
             result.Single(t => t.Id == 21).TrackFileId.Should().Be(101);
             result.Single(t => t.Id == 21).Monitored.Should().BeFalse();
 
+            // Two new tracks taking a file, plus the two old ones giving theirs up.
             Mocker.GetMock<ITrackRepository>()
-                .Verify(s => s.UpdateMany(It.Is<List<Track>>(l => l.Count == 2)), Times.Once());
+                .Verify(s => s.UpdateMany(It.Is<List<Track>>(l => l.Count == 4)), Times.Once());
+        }
+
+        [Test]
+        public void should_unlink_the_old_release_track_it_took_the_file_from()
+        {
+            var oldRelease = new AlbumRelease { Id = 1 };
+            var newRelease = new AlbumRelease { Id = 2 };
+
+            var oldTracks = new List<Track>
+            {
+                new Track { Id = 10, AlbumReleaseId = 1, ForeignRecordingId = "rec-1", Title = "Sirius", TrackFileId = 100, Monitored = true }
+            };
+
+            var newTracks = new List<Track>
+            {
+                new Track { Id = 20, AlbumReleaseId = 2, ForeignRecordingId = "rec-1", Title = "Sirius", TrackFileId = 0, Monitored = true }
+            };
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByRelease(1))
+                .Returns(oldTracks);
+
+            Mocker.GetMock<ITrackRepository>()
+                .Setup(s => s.GetTracksByRelease(2))
+                .Returns(newTracks);
+
+            var result = Subject.RelinkTrackFilesToRelease(newRelease, new List<AlbumRelease> { oldRelease });
+
+            // Leaving the file on both tracks makes it "linked to multiple tracks", which
+            // silently turns retagging that file into a no-op.
+            result.Single(t => t.Id == 20).TrackFileId.Should().Be(100);
+            oldTracks.Single(t => t.Id == 10).TrackFileId.Should().Be(0);
+
+            Mocker.GetMock<ITrackRepository>()
+                .Verify(s => s.UpdateMany(It.Is<List<Track>>(l => l.Any(t => t.Id == 10 && t.TrackFileId == 0))), Times.Once());
         }
 
         [Test]
@@ -79,7 +115,7 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
-        public void should_not_modify_old_release_tracks()
+        public void should_leave_old_release_tracks_alone_apart_from_the_file_they_gave_up()
         {
             var oldRelease = new AlbumRelease { Id = 1 };
             var newRelease = new AlbumRelease { Id = 2 };
@@ -104,7 +140,10 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Subject.RelinkTrackFilesToRelease(newRelease, new List<AlbumRelease> { oldRelease });
 
-            oldTracks.Single().TrackFileId.Should().Be(100);
+            // The file moves to the release now monitored; switching back relinks it from there.
+            oldTracks.Single().TrackFileId.Should().Be(0);
+            oldTracks.Single().Monitored.Should().BeTrue();
+            oldTracks.Single().Title.Should().Be("Track One");
         }
 
         [Test]

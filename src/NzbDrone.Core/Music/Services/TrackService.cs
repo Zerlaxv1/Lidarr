@@ -166,6 +166,7 @@ namespace NzbDrone.Core.Music
                 .ToLookup(t => t.ForeignRecordingId);
 
             var changed = new List<Track>();
+            var unlinked = new List<Track>();
             var consumed = new HashSet<int>();
 
             foreach (var newTrack in newTracks)
@@ -202,13 +203,24 @@ namespace NzbDrone.Core.Music
                 newTrack.TrackFileId = match.TrackFileId;
                 newTrack.Monitored = match.Monitored;
                 changed.Add(newTrack);
+
+                // Hand the file over instead of sharing it. A file left on both releases' tracks
+                // counts as linked to several tracks, and AudioTagService refuses to write tags
+                // to those - retagging the album then reports success and changes nothing.
+                if (match.TrackFileId != 0)
+                {
+                    match.TrackFileId = 0;
+                    unlinked.Add(match);
+                }
             }
 
-            if (changed.Any())
+            if (changed.Any() || unlinked.Any())
             {
-                _trackRepository.UpdateMany(changed);
+                _trackRepository.UpdateMany(changed.Concat(unlinked).ToList());
             }
 
+            // Only the new release's tracks: the unlinked ones are persisted above, but callers
+            // reason about what the release they switched to now looks like.
             return changed;
         }
 
