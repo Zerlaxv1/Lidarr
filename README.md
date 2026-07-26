@@ -74,10 +74,13 @@ the Lucida indexer is the one that returns genuine single-track releases.
   complete.
 * Wanted/Missing works at track level.
 
-> [!NOTE]
-> Building this fork: the plugin only loads when it was compiled against the exact
-> `Lidarr.Core.dll` the host runs (`src/Directory.Build.props` wildcards `AssemblyVersion`, so
-> every independent build differs). Build host and plugin in one pass, or pin the version.
+**Building**
+
+* `AssemblyVersion` is pinned instead of upstream's `10.0.0.*` wildcard, which derived the
+  revision from the build clock: two builds of the same commit disagreed, and the plugin then
+  refused to load into a host it wasn't compiled against — silently, with Lidarr starting
+  normally and no indexer to show for it. Host and plugin can now be built separately. CI can
+  still pass `-p:AssemblyVersion=x.y.z.w`.
 
 ## Major Features Include:
 
