@@ -15,6 +15,12 @@ Lidarr is a music collection manager for Usenet and BitTorrent users. It can mon
 > [!WARNING]
 > NOTICE - The Lidarr Metadata Server is recovering and rebuilding the cache which is impacting adding artists, library imports, etc. Please follow [GHI 5498](https://github.com/Lidarr/Lidarr/issues/5498) or see Discord for details.
 
+> [!IMPORTANT]
+> Much of the song-mode work in this fork was written with AI assistance (Claude), reviewed
+> and tested by a human before merging. It is covered by unit tests and exercised against a
+> real library, but it has not had the scrutiny upstream code gets. Read the diff before you
+> run it on a collection you care about.
+
 ## What this fork adds
 
 Upstream Lidarr monitors **albums**: you follow an album, it searches for that album, it
@@ -89,50 +95,24 @@ the Lucida indexer is the one that returns genuine single-track releases.
 
 ## Support
 
-Note: GitHub Issues are for Bugs and Feature Requests Only
+This fork is maintained for personal use and comes with no support. Please do not raise
+song-mode problems with the upstream project — they don't ship this code.
+
+For Lidarr itself, upstream is the place to go:
 
 [![Discord](https://img.shields.io/badge/discord-chat-7289DA.svg?maxAge=60)](https://lidarr.audio/discord)
-[![GitHub - Bugs and Feature Requests Only](https://img.shields.io/badge/github-issues-red.svg?maxAge=60)](https://github.com/Lidarr/Lidarr/issues)
 [![Wiki](https://img.shields.io/badge/servarr-wiki-181717.svg?maxAge=60)](https://wiki.servarr.com/lidarr)
 
-## Contributors
+## Credits
 
-This project exists thanks to all the people who contribute. [Contribute](CONTRIBUTING.md).
-<a href="https://github.com/lidarr/Lidarr/graphs/contributors"><img src="https://opencollective.com/lidarr/contributors.svg?width=890&button=false" /></a>
+This is a fork of [Lidarr](https://github.com/Lidarr/Lidarr) — all of the music
+management this builds on is their work, and the upstream project is where to look for
+support, documentation and the community.
 
-## Backers
-
-Thank you to all our backers! 🙏 [Become a backer](https://opencollective.com/Lidarr#backer)
-
-<img src="https://opencollective.com/Lidarr/backers.svg?width=890"></a>
-
-## Sponsors
-
-Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [Become a sponsor](https://opencollective.com/Lidarr#sponsor)
-
-<img src="https://opencollective.com/Lidarr/sponsors.svg?width=890"></a>
-
-## Mega Sponsors
-<img src="https://opencollective.com/Lidarr/tiers/mega-sponsor.svg?width=890"></a>
-
-## JetBrains
-Thank you to [<img src="/Logo/jetbrains.svg" alt="JetBrains" width="32"> JetBrains](http://www.jetbrains.com/) for providing us with free licenses to their great tools.
- 
-* [<img src="/Logo/resharper.svg" alt="ReSharper" width="32"> ReSharper](http://www.jetbrains.com/resharper/)
-* [<img src="/Logo/webstorm.svg" alt="WebStorm" width="32"> WebStorm](http://www.jetbrains.com/webstorm/)
-* [<img src="/Logo/rider.svg" alt="Rider" width="32"> Rider](http://www.jetbrains.com/rider/)
-* [<img src="/Logo/dottrace.svg" alt="dotTrace" width="32"> dotTrace](http://www.jetbrains.com/dottrace/)
-
-## DigitalOcean
-
-This project is also supported by DigitalOcean
-<p>
-  <a href="https://www.digitalocean.com/">
-    <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="201px">
-  </a>
-</p>
+The companion plugin is a fork of [Tubifarry](https://github.com/TypNull/Tubifarry) by
+TypNull.
 
 ### License
 
-* [GNU GPL v3](http://www.gnu.org/licenses/gpl.html)
-* Copyright 2010-2021
+* [GNU GPL v3](http://www.gnu.org/licenses/gpl.html) — see [LICENSE.md](LICENSE.md)
+* Copyright 2010-2021 Lidarr contributors
