@@ -249,7 +249,9 @@ namespace NzbDrone.Core.ImportLists.Spotify
             }
 
             _logger.Info("Spotify->MusicBrainz mapping: {0} in, {1} album ids and {2} artist ids absent from the mapping table (left for name lookup)",
-                items.Count, unmappedAlbum, unmappedArtist);
+                items.Count,
+                unmappedAlbum,
+                unmappedArtist);
 
             return items;
         }

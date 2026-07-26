@@ -34,6 +34,7 @@ namespace NzbDrone.Core.Music
         void SetMonitored(IEnumerable<int> ids, bool monitored);
         List<Track> RelinkTrackFilesToRelease(AlbumRelease newRelease, List<AlbumRelease> oldReleases);
         List<Track> SearchTracksByTitle(string title, int limit);
+
         // unmonitorOthers mirrors the given titles exactly, which is what a freshly added
         // album wants; an album already in the library must not have a list wipe the
         // monitoring the user (or another list) put there.

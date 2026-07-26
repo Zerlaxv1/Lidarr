@@ -73,7 +73,7 @@ namespace Lidarr.Api.V1.Tracks
             var tracks = _trackService.SearchTracksByTitle(term, limit);
             var resources = MapToResource(tracks, true, false);
 
-            for (int i = 0; i < resources.Count; i++)
+            for (var i = 0; i < resources.Count; i++)
             {
                 resources[i].Album = tracks[i].Album.ToResource();
             }

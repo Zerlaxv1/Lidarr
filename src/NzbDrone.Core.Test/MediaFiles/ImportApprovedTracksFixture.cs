@@ -322,4 +322,3 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
     }
 }
-

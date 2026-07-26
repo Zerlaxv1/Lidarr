@@ -649,7 +649,8 @@ namespace NzbDrone.Core.Test.ImportListTests
                     t.First().AddOptions.MonitorTrackTitles.Count == 2 &&
                     t.First().AddOptions.MonitorTrackTitles.Contains("Track One") &&
                     t.First().AddOptions.MonitorTrackTitles.Contains("Track Two")),
-                    false, true));
+                    false,
+                    true));
         }
 
         [Test]

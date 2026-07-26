@@ -85,7 +85,11 @@ namespace NzbDrone.Core.ImportLists.Spotify
             }
 
             _logger.Info("Spotify playlist {0}: {1} raw tracks fetched, {2} imported, dropped {3} unavailable (null track), {4} without album/artist",
-                playlistId, raw, result.Count, droppedNullTrack, droppedNoAlbum);
+                playlistId,
+                raw,
+                result.Count,
+                droppedNullTrack,
+                droppedNoAlbum);
 
             return result;
         }

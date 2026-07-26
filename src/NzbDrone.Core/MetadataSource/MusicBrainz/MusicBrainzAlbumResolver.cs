@@ -51,7 +51,7 @@ namespace NzbDrone.Core.MetadataSource.MusicBrainz
 
             if (cached != null)
             {
-                return cached == NoMatch ? null : cached;
+                return cached.Length == 0 ? null : cached;
             }
 
             var resolved = Resolve(album, artist, out var answered);
