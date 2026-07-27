@@ -23,11 +23,14 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Specifications
                 return Decision.Reject("Has unmatched tracks");
             }
 
-            // Song mode: a single-file download is a deliberate track grab — other
-            // monitored tracks arrive via their own searches, so only album-shaped
-            // (multi-file) downloads must cover the monitored track set. Tracks that
-            // already have a file on disk never count as missing.
-            if (item.NewDownload && item.LocalTracks.Count > 1 && item.TrackMapping.MBExtra.Any(t => t.Monitored && t.TrackFileId == 0))
+            // Song mode: a grab carrying fewer tracks than the matched release is a
+            // deliberate partial import — the rest of the monitored tracks arrive via
+            // their own searches, and a single grab can still deliver several files.
+            // Only a download claiming to be the whole release must cover the monitored
+            // track set. Tracks that already have a file on disk never count as missing.
+            var releaseTrackCount = item.AlbumRelease?.TrackCount ?? item.TrackCount;
+
+            if (item.NewDownload && item.TrackCount >= releaseTrackCount && item.TrackMapping.MBExtra.Any(t => t.Monitored && t.TrackFileId == 0))
             {
                 _logger.Debug("This release is missing monitored tracks. Skipping {0}", item);
                 return Decision.Reject("Has missing monitored tracks");
