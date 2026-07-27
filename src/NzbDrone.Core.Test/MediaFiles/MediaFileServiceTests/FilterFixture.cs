@@ -247,7 +247,6 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileServiceTests
         }
 
         [TestCase(FilterFilesType.Known)]
-        [TestCase(FilterFilesType.Matched)]
         public void filter_should_return_existing_file_if_size_changed(FilterFilesType filter)
         {
             FileSystem.AddFile("C:\\file1.avi".AsOsAgnostic(), new MockFileData("".PadRight(10)) { LastWriteTime = _lastWrite });
@@ -270,6 +269,75 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileServiceTests
 
             Subject.FilterUnchangedFiles(files, filter).Should().HaveCount(3);
             Subject.FilterUnchangedFiles(files, filter).Select(x => x.FullName).Should().Contain("C:\\file2.avi".AsOsAgnostic());
+        }
+
+        [Test]
+        public void filter_known_should_return_matched_file_if_modified_changed()
+        {
+            var files = GivenFilesWithSize10();
+
+            GivenKnownFile(_lastWrite.AddDays(1), 10, Builder<Track>.CreateListOfSize(1).Build() as List<Track>);
+
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Known).Should().HaveCount(3);
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Known).Select(x => x.FullName).Should().Contain("C:\\file2.avi".AsOsAgnostic());
+        }
+
+        [Test]
+        public void filter_matched_should_return_existing_file_if_size_changed_and_unmatched()
+        {
+            var files = GivenFilesWithSize10();
+
+            GivenKnownFile(_lastWrite, 11, new List<Track>());
+
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Matched).Should().HaveCount(3);
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Matched).Select(x => x.FullName).Should().Contain("C:\\file2.avi".AsOsAgnostic());
+        }
+
+        [Test]
+        public void filter_matched_should_not_return_matched_file_if_modified_changed()
+        {
+            var files = GivenFilesWithSize10();
+
+            GivenKnownFile(_lastWrite.AddDays(1), 10, Builder<Track>.CreateListOfSize(1).Build() as List<Track>);
+
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Matched).Should().HaveCount(2);
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Matched).Select(x => x.FullName).Should().NotContain("C:\\file2.avi".AsOsAgnostic());
+        }
+
+        [Test]
+        public void filter_matched_should_not_return_matched_file_if_size_changed()
+        {
+            var files = GivenFilesWithSize10();
+
+            GivenKnownFile(_lastWrite, 11, Builder<Track>.CreateListOfSize(1).Build() as List<Track>);
+
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Matched).Should().HaveCount(2);
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Matched).Select(x => x.FullName).Should().NotContain("C:\\file2.avi".AsOsAgnostic());
+        }
+
+        private List<IFileInfo> GivenFilesWithSize10()
+        {
+            FileSystem.AddFile("C:\\file1.avi".AsOsAgnostic(), new MockFileData("".PadRight(10)) { LastWriteTime = _lastWrite });
+            FileSystem.AddFile("C:\\file2.avi".AsOsAgnostic(), new MockFileData("".PadRight(10)) { LastWriteTime = _lastWrite });
+            FileSystem.AddFile("C:\\file3.avi".AsOsAgnostic(), new MockFileData("".PadRight(10)) { LastWriteTime = _lastWrite });
+
+            return FileSystem.AllFiles.Select(x => DiskProvider.GetFileInfo(x)).ToList();
+        }
+
+        private void GivenKnownFile(DateTime modified, long size, List<Track> tracks)
+        {
+            Mocker.GetMock<IMediaFileRepository>()
+                .Setup(c => c.GetFileWithPath(It.IsAny<List<string>>()))
+                .Returns(new List<TrackFile>
+                {
+                    new TrackFile
+                    {
+                        Path = "C:\\file2.avi".AsOsAgnostic(),
+                        Size = size,
+                        Modified = modified,
+                        Tracks = tracks
+                    }
+                });
         }
     }
 }

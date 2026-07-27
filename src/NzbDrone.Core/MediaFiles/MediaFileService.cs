@@ -135,13 +135,15 @@ namespace NzbDrone.Core.MediaFiles
             }
             else if (filter == FilterFilesType.Matched)
             {
+                // This filter means "retry the files we failed to map", so a file that is already
+                // mapped to tracks is skipped whatever its size or timestamp says. Re-importing it
+                // because it was retagged or moved would only delete and re-insert the same tracks;
+                // a scan with FilterFilesType.Known is what refreshes size/modified for known files.
                 unwanted = combined
-                    .Where(x => x.DiskFile.Length == x.DbFile.Size &&
-                           Math.Abs((x.DiskFile.LastWriteTimeUtc - x.DbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1 &&
-                           (x.DbFile.Tracks == null || (x.DbFile.Tracks.IsLoaded && x.DbFile.Tracks.Value.Any())))
+                    .Where(x => x.DbFile.Tracks == null || (x.DbFile.Tracks.IsLoaded && x.DbFile.Tracks.Value.Any()))
                     .Select(x => x.DiskFile)
                     .ToList();
-                _logger.Trace($"{unwanted.Count} unchanged and matched files");
+                _logger.Trace($"{unwanted.Count} matched files");
             }
             else
             {
