@@ -116,6 +116,15 @@ namespace NzbDrone.Core.Music
 
         public void Handle(AlbumInfoRefreshedEvent message)
         {
+            // A refresh is the first moment the tracks actually exist, so apply any pending
+            // song-mode titles here rather than waiting for a disk scan: an album added to an
+            // artist that is never scanned again would otherwise stay pending forever, leaving
+            // the album monitored wholesale or not at all. Applying twice is harmless - the
+            // titles are cleared once used.
+            ApplyPendingTrackMonitoring(_albumService.GetAlbumsByArtist(message.Artist.Id)
+                .Where(x => x.AddOptions.MonitorTrackTitles.Any())
+                .ToList());
+
             if (message.Artist.AddOptions == null)
             {
                 if (!message.Artist.Monitored)

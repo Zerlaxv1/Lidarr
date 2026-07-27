@@ -7,6 +7,7 @@ using NUnit.Framework;
 using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Music;
+using NzbDrone.Core.Music.Events;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.MusicTests
@@ -184,6 +185,34 @@ namespace NzbDrone.Core.Test.MusicTests
             // requested for search, and must not leak into the same TrackSearchCommand.
             Mocker.GetMock<IManageCommandQueue>()
                 .Verify(s => s.Push(It.Is<TrackSearchCommand>(c => c.TrackIds.Count == 1 && c.TrackIds.Contains(100) && !c.TrackIds.Contains(101)), CommandPriority.Normal, CommandTrigger.Unspecified), Times.Once);
+        }
+
+        [Test]
+        public void should_apply_pending_song_mode_monitoring_when_album_info_is_refreshed()
+        {
+            // The tracks only exist once the metadata refresh has run, and an artist that is
+            // never scanned again would otherwise keep its pending titles forever.
+            var artist = Builder<Artist>.CreateNew().With(a => a.Id = 5).With(a => a.Monitored = true).With(a => a.AddOptions = null).Build();
+
+            var songModeAlbum = Builder<Album>.CreateNew()
+                .With(a => a.Id = 10)
+                .With(a => a.AddOptions = new AddAlbumOptions { MonitorTrackTitles = new List<string> { "Paint It, Black" } })
+                .Build();
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(s => s.GetAlbumsByArtist(5))
+                .Returns(new List<Album> { songModeAlbum });
+
+            Mocker.GetMock<ITrackService>()
+                .Setup(s => s.SetMonitoredByTitle(10, It.IsAny<List<string>>(), true))
+                .Returns(new List<Track> { Builder<Track>.CreateNew().With(t => t.Id = 99).Build() });
+
+            Subject.Handle(new AlbumInfoRefreshedEvent(artist, new List<Album>(), new List<Album> { songModeAlbum }, new List<Album>()));
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(s => s.SetMonitoredByTitle(10, It.Is<List<string>>(l => l.Single() == "Paint It, Black"), true), Times.Once());
+
+            songModeAlbum.AddOptions.MonitorTrackTitles.Should().BeEmpty();
         }
     }
 }

@@ -9,15 +9,19 @@ namespace NzbDrone.Core.Music
         // Single source of truth for "which release should be the monitored one".
         // Files on disk win first (never orphan content we already have), then a
         // clean standard edition: Digital Media format, then [Worldwide] country,
-        // then track count as a final tiebreak. Used both for the add-time pick
-        // (SkyHookProxy, no files yet) and the refresh-time pick (RefreshAlbumService).
+        // then the plainest edition - fewest discs, then fewest tracks. That last
+        // pair used to prefer the LONGEST tracklist, which landed every album on a
+        // deluxe or anniversary edition instead of the album itself. Used both for
+        // the add-time pick (SkyHookProxy, no files yet) and the refresh-time pick
+        // (RefreshAlbumService).
         public static AlbumRelease SelectPreferred(IEnumerable<AlbumRelease> releases, Func<AlbumRelease, int> fileCount)
         {
             return releases
                 .OrderByDescending(x => fileCount(x))
                 .ThenByDescending(x => x.Media != null && x.Media.Any(m => m.Format != null && m.Format.Equals("Digital Media", StringComparison.OrdinalIgnoreCase)))
                 .ThenByDescending(x => x.Country != null && x.Country.Any(c => c != null && c.Equals("[Worldwide]", StringComparison.OrdinalIgnoreCase)))
-                .ThenByDescending(x => x.TrackCount)
+                .ThenBy(x => x.Media?.Count ?? 1)
+                .ThenBy(x => x.TrackCount)
                 .First();
         }
     }
