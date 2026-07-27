@@ -149,6 +149,52 @@ namespace NzbDrone.Core.Test.MusicTests.AlbumRepositoryTests
             album.Should().BeNull();
         }
 
+        [TestCase("ANThology")]
+        [TestCase("anthology")]
+        [TestCase("anthology!")]
+        public void should_find_album_in_db_by_title_whoever_the_artist_is(string title)
+        {
+            var other = new Album
+            {
+                Title = "ANThology",
+                ForeignAlbumId = "3",
+                CleanTitle = "anthology",
+                ArtistMetadataId = _artist.ArtistMetadataId + 1,
+                AlbumType = ""
+            };
+
+            _albumRepo.Insert(other);
+
+            var albums = _albumRepo.FindAllByTitle(title);
+
+            albums.Select(x => x.ForeignAlbumId).Should().BeEquivalentTo(new[] { "1", "3" });
+        }
+
+        [Test]
+        public void should_not_find_album_in_db_by_incorrect_title_whoever_the_artist_is()
+        {
+            _albumRepo.FindAllByTitle("antholoyg").Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_load_any_release_ok_from_the_database_every_time()
+        {
+            // The import decision reads AnyReleaseOk through AlbumRelease.Album, both from the
+            // join FindByAlbum does and from the HasOne lazy load. Nothing between the two
+            // caches an Album, so a flag flipped in the database has to be visible at once.
+            _album.AnyReleaseOk = false;
+            _albumRepo.Update(_album);
+
+            _releaseRepo.FindByAlbum(_album.Id).Single().Album.Value.AnyReleaseOk.Should().BeFalse();
+            _releaseRepo.Get(_release.Id).Album.Value.AnyReleaseOk.Should().BeFalse();
+
+            _album.AnyReleaseOk = true;
+            _albumRepo.Update(_album);
+
+            _releaseRepo.FindByAlbum(_album.Id).Single().Album.Value.AnyReleaseOk.Should().BeTrue();
+            _releaseRepo.Get(_release.Id).Album.Value.AnyReleaseOk.Should().BeTrue();
+        }
+
         [Test]
         public void should_not_find_album_in_db_by_partial_releaseid()
         {
