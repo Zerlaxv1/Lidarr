@@ -157,5 +157,80 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             Subject.GetDbCandidatesFromTags(localAlbumRelease, null, false).Should().BeEquivalentTo(
                 new List<CandidateAlbumRelease> { new CandidateAlbumRelease(release) });
         }
+
+        private LocalAlbumRelease GivenUnmatchableArtist(string artistTag, AlbumRelease release)
+        {
+            var tracks = GivenTracks(3);
+            var localTracks = GivenLocalTracks(tracks, release);
+            localTracks.ForEach(x => x.FileTrackInfo.ArtistTitle = artistTag);
+
+            Mocker.GetMock<IArtistService>()
+                  .Setup(x => x.GetCandidates(It.IsAny<string>()))
+                  .Returns(new List<Artist>());
+
+            Mocker.GetMock<IReleaseService>()
+                  .Setup(x => x.GetReleasesByAlbum(release.Album.Value.Id))
+                  .Returns(new List<AlbumRelease> { release });
+
+            return new LocalAlbumRelease(localTracks);
+        }
+
+        [TestCase("Various Artists")]
+        [TestCase("Varios Artistas")]
+        [TestCase("Kenshi Yonezu")]
+        public void get_candidates_should_fall_back_to_album_title_when_artist_matches_nothing(string artistTag)
+        {
+            var release = GivenAlbumRelease("album", GivenTracks(3));
+            var localAlbumRelease = GivenUnmatchableArtist(artistTag, release);
+
+            Mocker.GetMock<IAlbumService>()
+                  .Setup(x => x.GetCandidatesByTitle("album"))
+                  .Returns(new List<Album> { release.Album.Value });
+
+            Subject.GetDbCandidatesFromTags(localAlbumRelease, null, false).Should().BeEquivalentTo(
+                new List<CandidateAlbumRelease> { new CandidateAlbumRelease(release) });
+        }
+
+        [Test]
+        public void get_candidates_should_not_fall_back_to_album_title_when_the_artist_matches()
+        {
+            var release = GivenAlbumRelease("album", GivenTracks(3));
+            var album = release.Album.Value;
+            var localTracks = GivenLocalTracks(GivenTracks(3), release);
+            var localAlbumRelease = new LocalAlbumRelease(localTracks);
+
+            var artist = Builder<Artist>.CreateNew().With(x => x.ArtistMetadataId = 1).Build();
+
+            Mocker.GetMock<IArtistService>()
+                  .Setup(x => x.GetCandidates(It.IsAny<string>()))
+                  .Returns(new List<Artist> { artist });
+
+            Mocker.GetMock<IAlbumService>()
+                  .Setup(x => x.GetCandidates(artist.ArtistMetadataId, "album"))
+                  .Returns(new List<Album> { album });
+
+            Mocker.GetMock<IReleaseService>()
+                  .Setup(x => x.GetReleasesByAlbum(album.Id))
+                  .Returns(new List<AlbumRelease> { release });
+
+            Subject.GetDbCandidatesFromTags(localAlbumRelease, null, false).Should().BeEquivalentTo(
+                new List<CandidateAlbumRelease> { new CandidateAlbumRelease(release) });
+
+            Mocker.GetMock<IAlbumService>()
+                  .Verify(x => x.GetCandidatesByTitle(It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void get_candidates_should_not_look_up_a_blank_album_title()
+        {
+            var release = GivenAlbumRelease("album", GivenTracks(3));
+            var localAlbumRelease = GivenUnmatchableArtist("Varios Artistas", release);
+            localAlbumRelease.LocalTracks.ForEach(x => x.FileTrackInfo.AlbumTitle = null);
+
+            Subject.GetDbCandidatesFromTags(localAlbumRelease, null, false).Should().BeEmpty();
+
+            Mocker.GetMock<IAlbumService>()
+                  .Verify(x => x.GetCandidatesByTitle(It.IsAny<string>()), Times.Never());
+        }
     }
 }

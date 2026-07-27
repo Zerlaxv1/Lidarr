@@ -182,6 +182,29 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 }
             }
 
+            if (candidateReleases.Any())
+            {
+                return candidateReleases;
+            }
+
+            // Every candidate so far had to be reached through an artist, so a file whose album
+            // artist is not an artist in the library reaches nothing: a compilation credited to
+            // "Various Artists" / "Varios Artistas" when no such artist was ever added, or a tag
+            // that romanises a name the library holds in its native script (Kenshi Yonezu vs
+            // 米津玄師). The album title is then the only handle left. Matching on it alone is
+            // deliberately a last resort - the distance calculation still has to accept the
+            // release, and it charges the mismatched artist name against it.
+            var albumTag = localAlbumRelease.LocalTracks.MostCommon(x => x.FileTrackInfo.AlbumTitle) ?? "";
+            if (albumTag.IsNotNullOrWhiteSpace())
+            {
+                _logger.Debug("No candidates for artist [{0}], falling back to album title [{1}]", artistTag, albumTag);
+
+                foreach (var album in _albumService.GetCandidatesByTitle(albumTag))
+                {
+                    candidateReleases.AddRange(GetDbCandidatesByAlbum(localAlbumRelease, album, includeExisting));
+                }
+            }
+
             return candidateReleases;
         }
 

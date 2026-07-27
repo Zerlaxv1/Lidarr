@@ -25,6 +25,7 @@ namespace NzbDrone.Core.Music
         Album FindByTitle(int artistMetadataId, string title);
         Album FindByTitleInexact(int artistMetadataId, string title);
         List<Album> GetCandidates(int artistMetadataId, string title);
+        List<Album> GetCandidatesByTitle(string title);
         void DeleteAlbum(int albumId, bool deleteFiles, bool addImportListExclusion = false);
         List<Album> GetAllAlbums();
         Album UpdateAlbum(Album album);
@@ -144,6 +145,28 @@ namespace NzbDrone.Core.Music
             }
 
             return output.DistinctBy(x => x.Id).ToList();
+        }
+
+        // Last resort for a file whose artist tag resolves to nobody in the library: an exact
+        // title lookup across every artist. Two indexed queries rather than a fuzzy sweep of
+        // the whole library, because this runs only once the normal lookup has come up empty.
+        public List<Album> GetCandidatesByTitle(string title)
+        {
+            var candidates = _albumRepository.FindAllByTitle(title);
+
+            if (candidates.Any())
+            {
+                return candidates;
+            }
+
+            var stripped = title.RemoveBracketsAndContents();
+
+            if (stripped.IsNullOrWhiteSpace() || stripped == title)
+            {
+                return candidates;
+            }
+
+            return _albumRepository.FindAllByTitle(stripped);
         }
 
         private List<Album> FindByStringInexact(List<Album> albums, Func<Album, string, double> scoreFunction, string title)
