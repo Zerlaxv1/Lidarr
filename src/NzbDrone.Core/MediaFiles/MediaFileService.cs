@@ -16,6 +16,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         TrackFile Add(TrackFile trackFile);
         void AddMany(List<TrackFile> trackFiles);
+        void AddManySkippingExisting(List<TrackFile> trackFiles);
         void Update(TrackFile trackFile);
         void Update(List<TrackFile> trackFile);
         void Delete(TrackFile trackFile, DeleteMediaFileReason reason);
@@ -63,6 +64,54 @@ namespace NzbDrone.Core.MediaFiles
             {
                 _eventAggregator.PublishEvent(new TrackFileAddedEvent(addedFile));
             }
+        }
+
+        public void AddManySkippingExisting(List<TrackFile> trackFiles)
+        {
+            List<TrackFile> addedFiles;
+
+            try
+            {
+                _mediaFileRepository.InsertMany(trackFiles);
+                addedFiles = trackFiles;
+            }
+            catch (Exception ex)
+            {
+                // Another task (a second scan, a rename, a move) can insert one of these paths
+                // between the caller reading the known files and this insert, and the unique index
+                // on Path then rolls the whole batch back. Retry one by one so a single collision
+                // doesn't cost us every other file that was scanned.
+                _logger.Debug(ex, "Bulk insert of {0} files failed, inserting them individually", trackFiles.Count);
+
+                addedFiles = InsertSkippingExisting(trackFiles);
+            }
+
+            foreach (var addedFile in addedFiles)
+            {
+                _eventAggregator.PublishEvent(new TrackFileAddedEvent(addedFile));
+            }
+        }
+
+        private List<TrackFile> InsertSkippingExisting(List<TrackFile> trackFiles)
+        {
+            var addedFiles = new List<TrackFile>();
+
+            foreach (var trackFile in trackFiles)
+            {
+                // the rolled back batch insert may already have assigned an id
+                trackFile.Id = 0;
+
+                try
+                {
+                    addedFiles.Add(_mediaFileRepository.Insert(trackFile));
+                }
+                catch (Exception ex) when (_mediaFileRepository.GetFileWithPath(trackFile.Path) != null)
+                {
+                    _logger.Debug(ex, "Skipping {0}, it is already known", trackFile.Path);
+                }
+            }
+
+            return addedFiles;
         }
 
         public void Update(TrackFile trackFile)

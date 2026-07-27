@@ -421,7 +421,7 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Subject.Scan(new List<string> { _artist.Path });
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.AddMany(It.Is<List<TrackFile>>(l => l.Select(t => t.Path).SequenceEqual(files))),
+                .Verify(x => x.AddManySkippingExisting(It.Is<List<TrackFile>>(l => l.Select(t => t.Path).SequenceEqual(files))),
                         Times.Once());
         }
 
@@ -443,7 +443,7 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Subject.Scan(new List<string> { _artist.Path });
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.AddMany(It.Is<List<TrackFile>>(l => l.Select(t => t.Path).SequenceEqual(files.GetRange(0, 1)))),
+                .Verify(x => x.AddManySkippingExisting(It.Is<List<TrackFile>>(l => l.Select(t => t.Path).SequenceEqual(files.GetRange(0, 1)))),
                         Times.Once());
         }
 
@@ -465,11 +465,11 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Subject.Scan(new List<string> { _artist.Path });
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.AddMany(It.Is<List<TrackFile>>(l => l.Count == 0)),
+                .Verify(x => x.AddManySkippingExisting(It.Is<List<TrackFile>>(l => l.Count == 0)),
                         Times.Once());
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(x => x.AddMany(It.Is<List<TrackFile>>(l => l.Count > 0)),
+                .Verify(x => x.AddManySkippingExisting(It.Is<List<TrackFile>>(l => l.Count > 0)),
                         Times.Never());
         }
 

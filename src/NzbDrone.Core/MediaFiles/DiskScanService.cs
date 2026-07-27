@@ -209,7 +209,7 @@ namespace NzbDrone.Core.MediaFiles
                     MediaInfo = decision.Item.FileTrackInfo.MediaInfo
                 })
                 .ToList();
-            _mediaFileService.AddMany(newFiles);
+            _mediaFileService.AddManySkippingExisting(newFiles);
 
             _logger.Debug($"Inserted {newFiles.Count} new unmatched trackfiles");
 
