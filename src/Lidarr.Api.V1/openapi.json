@@ -10850,6 +10850,10 @@
           "allowFingerprinting": {
             "$ref": "#/components/schemas/AllowFingerprinting"
           },
+          "minimumAlbumMatchScore": {
+            "type": "integer",
+            "format": "int32"
+          },
           "setPermissionsLinux": {
             "type": "boolean"
           },

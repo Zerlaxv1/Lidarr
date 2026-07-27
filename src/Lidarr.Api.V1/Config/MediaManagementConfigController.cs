@@ -34,6 +34,7 @@ namespace Lidarr.Api.V1.Config
             SharedValidator.RuleFor(c => c.ChmodFolder).SetValidator(folderChmodValidator).When(c => !string.IsNullOrEmpty(c.ChmodFolder) && (OsInfo.IsLinux || OsInfo.IsOsx));
             SharedValidator.RuleFor(c => c.ScriptImportPath).IsValidPath().When(c => c.UseScriptImport);
             SharedValidator.RuleFor(c => c.MinimumFreeSpaceWhenImporting).GreaterThanOrEqualTo(100);
+            SharedValidator.RuleFor(c => c.MinimumAlbumMatchScore).InclusiveBetween(0, 100);
         }
 
         protected override MediaManagementConfigResource ToResource(IConfigService model)

@@ -263,6 +263,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AllowFingerprinting", value); }
         }
 
+        public int MinimumAlbumMatchScore
+        {
+            get { return GetValueInt("MinimumAlbumMatchScore", 80); }
+
+            set { SetValue("MinimumAlbumMatchScore", value); }
+        }
+
         public bool SetPermissionsLinux
         {
             get { return GetValueBoolean("SetPermissionsLinux", false); }

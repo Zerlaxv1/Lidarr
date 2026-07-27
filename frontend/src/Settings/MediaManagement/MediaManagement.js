@@ -408,6 +408,25 @@ class MediaManagement extends Component {
                     isAdvanced={true}
                   >
                     <FormLabel>
+                      {translate('MinimumAlbumMatchScore')}
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.NUMBER}
+                      unit='%'
+                      name="minimumAlbumMatchScore"
+                      helpText={translate('MinimumAlbumMatchScoreHelpText')}
+                      helpTextWarning={translate('MinimumAlbumMatchScoreHelpTextWarning')}
+                      onChange={onInputChange}
+                      {...settings.minimumAlbumMatchScore}
+                    />
+                  </FormGroup>
+
+                  <FormGroup
+                    advancedSettings={advancedSettings}
+                    isAdvanced={true}
+                  >
+                    <FormLabel>
                       {translate('ChangeFileDate')}
                     </FormLabel>
 
